@@ -1,0 +1,511 @@
+/* ==========================================================================
+   Espace barbière — mise en page propre aux écrans pro.
+   Les composants (boutons, cartes, frise, feuilles…) viennent de app.css ;
+   ici seulement leur agencement et quelques ajustements de lisibilité
+   « à bout de bras » (téléphone posé sur la console).
+   ========================================================================== */
+
+.app--pro .pro-view { display: block; }
+
+/* La frise est plus haute que dans le catalogue : 15 min = 36 px,
+   de quoi lire l'heure, le nom et la prestation même sur un RDV court. */
+.app--pro .timeline { --ppm: 2.4px; --hours-w: 54px; }
+
+/* --------------------------------------------------------------------------
+   En-tête du jour et semaine
+   -------------------------------------------------------------------------- */
+.pro-dayhead .icon-btn { color: var(--card); }
+.pro-dayhead__titles { text-align: center; }
+.pro-dayhead__title { font-size: clamp(1.25rem, 5.6vw, 1.625rem); }
+
+.pro-agenda-page { padding-top: var(--s-3); padding-bottom: calc(var(--s-9) + 40px); }
+
+.pro-weekbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-height: 40px;
+}
+
+/* Les 7 jours tiennent dans la largeur, sans défilement ni fondu. */
+.pro-week {
+  margin-inline: 0;
+  padding: 6px 0 12px;
+  gap: 6px;
+  overflow: visible;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.pro-week .daystrip__day {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 78px;
+  padding: 7px 0 11px;
+}
+.pro-week .daystrip__num { font-size: 1.375rem; }
+.pro-week__count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--green-bg);
+  color: var(--green);
+  font-size: .75rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pro-week__count--zero { background: transparent; color: var(--ink-2); font-weight: 600; }
+.pro-week .daystrip__day[aria-pressed="true"] .pro-week__count { background: rgba(255, 252, 247, .16); color: var(--card); }
+.pro-week .daystrip__day[aria-pressed="true"]::after { display: none; }
+.pro-week .daystrip__day--closed { cursor: pointer; }
+.pro-skel-week { height: 120px; }
+.pro-skel-tall { height: 320px; }
+
+/* --------------------------------------------------------------------------
+   Agenda : colonne unique sur téléphone, agenda + détail côte à côte ≥ 900 px
+   -------------------------------------------------------------------------- */
+.pro-agenda { display: grid; gap: var(--s-5); margin-top: var(--s-2); }
+.pro-agenda__main { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; transition: opacity .2s; }
+.pro-agenda__main[aria-busy="true"] { opacity: .55; }
+.pro-agenda__panel { display: none; }
+
+@media (min-width: 900px) {
+  .pro-agenda { grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); align-items: start; }
+  .pro-agenda__panel {
+    display: block;
+    position: sticky;
+    top: calc(var(--appbar-h) + var(--s-3));
+    max-height: calc(100dvh - var(--appbar-h) - var(--tabbar-h) - var(--s-6));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--s-4) var(--s-5) 96px;   /* le bas reste libre sous le bouton « + » */
+    border: 1px solid rgba(28, 41, 37, .06);
+    border-radius: var(--r-card);
+    background: var(--card);
+    box-shadow: var(--shadow-1);
+  }
+  .pro-agenda__panel:focus { outline: none; }
+  .timeline__event.is-selected { box-shadow: 0 0 0 3px var(--green), var(--shadow-2); z-index: 2; }
+}
+.pro-panel__bar { display: flex; align-items: center; justify-content: space-between; margin: -6px -8px var(--s-2) 0; }
+.pro-panel-empty { padding-block: var(--s-9); }
+
+/* Nouvelles réservations en ligne */
+.pro-news { margin-top: var(--s-2); }
+.pro-news > .icon-btn { margin: -8px -8px 0 0; }
+.pro-news__list { list-style: none; margin: var(--s-2) 0 0; padding: 0; display: grid; gap: 2px; }
+.pro-news__item {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: .9375rem;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 55, 20, .35);
+  text-underline-offset: .2em;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Carte « Prochain client » : lisible à bout de bras
+   -------------------------------------------------------------------------- */
+.pro-next { padding: var(--s-4) var(--s-5) var(--s-5); box-shadow: inset 5px 0 0 var(--oxblood), var(--shadow-2); }
+.pro-next__kicker { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); color: var(--ink-2); }
+.pro-next__in { color: var(--oxblood); font-size: 1.0625rem; font-weight: 750; white-space: nowrap; }
+.pro-next__main {
+  display: block;
+  width: 100%;
+  margin: var(--s-1) 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* Prénom composé (Jean-Christophe) : passe à la ligne au trait d'union plutôt
+   que d'être coupé ; taille choisie pour qu'un prénom d'un mot (Emmanuelle) tienne,
+   même sur un écran de 320 px (affichage agrandi). */
+.pro-next__name {
+  display: block;
+  overflow: hidden;
+  color: var(--green);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 11vw, 4.25rem);
+  line-height: 1.02;
+  white-space: normal;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.pro-next__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s-3); margin-top: var(--s-1); }
+.pro-next__time {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.pro-next__svc { color: var(--ink-2); font-size: 1.125rem; font-weight: 600; }
+.pro-next__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); margin-top: var(--s-4); }
+.pro-next__actions .btn { padding-inline: .75rem; }
+.pro-next__now {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: 1px dashed var(--line-2);
+  color: var(--ink-2);
+  font-size: .9375rem;
+}
+.pro-next__now .icon { margin-top: 2px; color: var(--oxblood); }
+.pro-next--empty { box-shadow: var(--shadow-1); }
+.pro-next__none { margin-top: var(--s-1); font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.25; }
+.pro-next__later { margin-top: var(--s-2); padding-inline: 0; white-space: normal; text-align: left; justify-content: flex-start; }
+
+/* --------------------------------------------------------------------------
+   Chiffres clés : trois colonnes même sur téléphone
+   -------------------------------------------------------------------------- */
+.pro-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+.pro-stats .stat { padding: var(--s-3) 10px; min-width: 0; }
+.pro-stats .stat__value { font-size: clamp(1.25rem, 5.6vw, 1.75rem); white-space: nowrap; }
+.pro-stats .stat__value.pro-stats__word { font-size: clamp(1.0625rem, 4.6vw, 1.5rem); }
+.pro-stats .stat__label { letter-spacing: .05em; }
+.pro-stats .stat__hint { font-size: .75rem; line-height: 1.3; }
+
+/* --------------------------------------------------------------------------
+   Frise de la journée
+   -------------------------------------------------------------------------- */
+.pro-day { min-width: 0; }
+.pro-scroller {
+  position: relative;
+  /* Hauteur de l'écran utile : la frise entière tient à l'écran une fois la page
+     défilée jusqu'à elle. Le défilement se poursuit sur la page aux extrémités. */
+  max-height: min(calc(100dvh - var(--appbar-h) - var(--tabbar-h) - 64px - env(safe-area-inset-bottom, 0px)), 760px);
+  overflow-y: auto;
+  touch-action: pan-y;               /* le glissé horizontal change de jour */
+  scroll-margin-top: calc(var(--appbar-h) + var(--s-2));
+  padding-right: 4px;
+  border: 1px solid rgba(28, 41, 37, .06);
+  border-radius: var(--r-card);
+  background: rgba(255, 252, 247, .7);
+  box-shadow: var(--shadow-1);
+}
+.pro-scroller:focus-visible { outline-offset: -3px; }
+.pro-scroller .timeline { padding: 14px 0 18px; transition: transform .2s var(--ease-out), opacity .2s; }
+@media (min-width: 900px) {
+  .pro-scroller { max-height: calc(100dvh - var(--appbar-h) - var(--tabbar-h) - 120px); min-height: 420px; }
+}
+.pro-day__hint { margin-top: var(--s-2); color: var(--ink-2); font-size: .8125rem; text-align: center; }
+
+.app--pro .timeline__track { cursor: copy; }
+.app--pro .timeline__hour { font-size: .8125rem; }
+/* Demi-heures : plus discrètes que les heures pleines, mais contraste AA (MOB-7). */
+.app--pro .timeline__hour.pro-hour--half { color: var(--ink-2); font-size: .75rem; font-weight: 600; }
+
+/* Rendez-vous : un peu plus grands que dans le catalogue */
+.app--pro .timeline__event { cursor: pointer; padding: 4px 8px 4px 9px; }
+.app--pro .timeline__time { font-size: .875rem; }
+.app--pro .timeline__name { font-size: 1rem; }
+.app--pro .timeline__service { font-size: .875rem; }
+.pro-ev__tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--brass-bg);
+  color: #6E5220;
+  font-size: .625rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.pro-ev__tag--done { background: var(--ok-bg); color: var(--ok); }
+.pro-ev__tag--noshow { background: var(--warn-bg); color: var(--warn); }
+/* 20 min : heure + nom sur une ligne, prestation dessous */
+.pro-ev--two { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 6px; align-content: start; }
+.pro-ev--two .timeline__service { grid-column: 1 / -1; }
+.pro-ev--two .pro-ev__tag { display: none; }
+/* 15 min : tout sur une ligne (heure · nom · prestation) */
+.pro-ev--row { flex-direction: row; align-items: center; gap: 6px; padding-block: 2px; }
+.pro-ev--row .timeline__name { flex: 0 1 auto; min-width: 0; }
+.pro-ev--row .timeline__service { flex: 1 1 0; min-width: 0; }
+.pro-ev--row .timeline__service::before { content: "· "; }
+.pro-ev--row .pro-ev__tag { display: none; }
+
+/* Blocages : bouton hachuré, toucher → suppression */
+.app--pro .timeline__block {
+  gap: 6px;
+  z-index: 0;
+  font-size: .75rem;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: .02em;
+  font-weight: 700;
+}
+.app--pro .timeline__block .icon { width: 15px; height: 15px; flex: none; }
+.app--pro .timeline__block:focus-visible { outline-offset: -3px; }
+.app--pro .timeline__closed { font-size: .6875rem; }
+
+/* Jour fermé et annulés */
+.pro-closed { border: 1.5px dashed var(--line-2); border-radius: var(--r-card); }
+.pro-closed__blocks { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; gap: var(--s-2); justify-items: center; }
+.pro-closed__blocks .btn { white-space: normal; }
+.pro-cancelled > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--ink-2);
+  font-size: .9375rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pro-cancelled > .list { margin-top: var(--s-1); }
+
+/* Bouton flottant « + », au-dessus de la barre d'onglets */
+.pro-fab {
+  position: fixed;
+  right: max(var(--gutter), env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--s-4));
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--oxblood);
+  color: var(--card);
+  box-shadow: inset 0 0 0 3px var(--oxblood), inset 0 0 0 4.5px rgba(217, 190, 140, .7), 0 10px 24px -6px rgba(126, 42, 30, .55);
+  cursor: pointer;
+  transition: transform .15s var(--ease-out), background-color .15s;
+  --focus-color: var(--green);
+}
+.pro-fab .icon { width: 30px; height: 30px; stroke-width: 2.25; }
+.pro-fab:active { transform: scale(.94); }
+@media (hover: hover) { .pro-fab:hover { background: var(--oxblood-2); } }
+@media (min-width: 1152px) {
+  .pro-fab { right: calc((100% - var(--maxw-wide)) / 2 + var(--gutter)); }
+}
+/* Les messages (« Défaire »…) s'affichent au-dessus du « + », jamais dessus :
+   un appui sur « + » ne doit pas défaire sans le dire le statut qu'on vient de poser.
+   --bottom-space vaut déjà la barre d'onglets et la zone sûre ; l'écart (16 px) couvre
+   aussi le glissement d'entrée du message (14 px). */
+body:has(.pro-fab) .toasts { bottom: calc(var(--bottom-space) + var(--s-4) + 64px + var(--s-4)); }
+
+/* --------------------------------------------------------------------------
+   Détail d'un rendez-vous (feuille ou panneau)
+   -------------------------------------------------------------------------- */
+.pro-detail { display: grid; gap: var(--s-4); }
+.pro-detail__who { display: flex; align-items: center; gap: var(--s-4); }
+.pro-detail__whotext { min-width: 0; display: grid; gap: 4px; }
+.pro-detail__name { line-height: 1.15; }
+.pro-detail__phone { font-size: 1.25rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.pro-detail__phone a { text-decoration: none; }
+.pro-detail__badges { --gap: 6px; }
+.pro-detail__notes { padding: var(--s-3) var(--s-4); }
+.pro-detail__group { display: grid; gap: var(--s-2); }
+.pro-detail__status,
+.pro-detail__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.pro-detail__status .btn,
+.pro-detail__grid .btn { padding-inline: .75rem; }
+.pro-prewrap { white-space: pre-line; }
+
+/* Honoré / Lapin : boutons bascule */
+.pro-toggle--done[aria-pressed="true"] { --btn-bg: var(--ok); --btn-fg: var(--card); --btn-border: var(--ok); }
+.pro-toggle--noshow[aria-pressed="true"] { --btn-bg: var(--warn); --btn-fg: var(--card); --btn-border: var(--warn); }
+
+.pro-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, .8fr);
+  gap: var(--s-3) var(--s-4);
+  margin: 0;
+  padding: var(--s-4);
+  border-radius: var(--r-card);
+  background: var(--paper);
+}
+.pro-facts dt {
+  color: var(--ink-2);
+  font-size: .6875rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.pro-facts dd { margin: 2px 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.35; }
+.pro-facts__time { display: block; font-family: var(--font-display); font-size: 1.75rem; font-weight: 400; line-height: 1.15; font-variant-numeric: tabular-nums lining-nums; }
+.pro-facts__day { display: block; color: var(--ink-2); font-size: .9375rem; font-weight: 600; }
+.pro-facts__wide { grid-column: 1 / -1; }
+.pro-facts__wide dd { font-size: .9375rem; font-weight: 500; }
+
+/* Contact : Appeler / SMS / WhatsApp — pictogramme au-dessus du libellé */
+.pro-contact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+.pro-contact .btn {
+  flex-direction: column;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border-radius: var(--r-card);
+  font-size: .9375rem;
+}
+.pro-contact .btn .icon { width: 24px; height: 24px; }
+.pro-quote { font-size: .9375rem; line-height: 1.5; }
+
+/* --------------------------------------------------------------------------
+   Formulaires dans les feuilles
+   -------------------------------------------------------------------------- */
+.pro-sheet .sheet__body { padding-bottom: var(--s-6); }
+.pro-form > section { display: grid; gap: var(--s-2); }
+.pro-chips-wrap { flex-wrap: wrap; overflow: visible; }
+
+/* Prestations en pastilles : deux colonnes, nom puis durée, sans défilement */
+.pro-svc-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.pro-svc-chips .chip {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 6px 12px;
+  border-radius: var(--r-card);
+  line-height: 1.2;
+  white-space: normal;
+  text-align: left;
+}
+.pro-svc-chips .chip__count,
+.pro-svc-chips .chip[aria-pressed="true"] .chip__count { padding: 0; background: none; color: inherit; opacity: .8; font-size: .75rem; }
+/* Libellé long (« Ajouter une 2e plage… ») : passe à la ligne plutôt que d'élargir la page. */
+.pro-linkbtn { justify-self: start; padding-inline: .5rem; white-space: normal; text-align: left; }
+
+.pro-choice { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4); }
+.pro-choice__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  color: var(--green);
+}
+.pro-choice__text { display: grid; gap: 2px; min-width: 0; }
+
+/* Recherche de client */
+.pro-search { position: relative; }
+.pro-search__icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-2);
+  pointer-events: none;
+}
+.pro-search .pro-search__input { padding-left: 46px; }
+.pro-search--page { margin-bottom: var(--s-4); }
+.pro-results:empty { display: none; }
+.pro-results { margin-top: var(--s-2); }
+.pro-results__none { display: grid; gap: var(--s-2); justify-items: start; color: var(--ink-2); }
+.pro-results__list .list__item { min-height: 58px; }
+
+.pro-picked { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); }
+.pro-picked__text { flex: 1; min-width: 0; display: grid; gap: 2px; justify-items: start; }
+.pro-picked__name { font-weight: 700; font-size: 1.0625rem; }
+
+/* Choix du jour et de l'heure */
+.pro-picker { display: grid; gap: var(--s-2); }
+.pro-picker__days { margin-inline: calc(-1 * var(--s-5)); padding-inline: var(--s-5); scroll-padding-inline: var(--s-5); }
+.pro-picker__days .daystrip__day { width: 58px; min-height: 80px; }
+.pro-picker__days .daystrip__day--closed { cursor: pointer; }
+.pro-picker__date { grid-template-columns: auto 1fr; align-items: center; gap: var(--s-3); }
+.pro-picker__datelabel { font-weight: 500; color: var(--ink-2); font-size: var(--fs-sm); }
+.pro-picker__slots { min-height: 64px; margin-top: var(--s-2); }
+.pro-picker__slots .loader { padding-block: var(--s-4); }
+.pro-picker__empty { padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); background: var(--paper); color: var(--ink-2); font-size: .9375rem; }
+.pro-picker__free { margin-top: var(--s-2); }
+.pro-picker .slots__grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+
+.pro-block__card { padding-block: var(--s-1) var(--s-3); }
+.pro-durfree { display: grid; gap: 6px; margin-top: var(--s-2); }
+
+/* --------------------------------------------------------------------------
+   Clients
+   -------------------------------------------------------------------------- */
+.pro-clients .list__item { min-height: 72px; }
+.pro-clients .list__item > .icon { flex: none; }
+.pro-client-card { display: grid; gap: var(--s-4); }
+.pro-client-card__who { display: flex; align-items: center; gap: var(--s-4); }
+.pro-client-card .btn--block { white-space: normal; }
+.pro-client-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.pro-client-stats .stat { padding: var(--s-3) var(--s-4); }
+.pro-stat-date { font-size: 1.375rem; }
+@media (min-width: 560px) { .pro-client-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Barre d'enregistrement d'une section */
+.pro-savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2) var(--s-3);
+  margin-top: var(--s-4);
+}
+.pro-savebar__state { flex: 1 1 auto; color: var(--oxblood); font-size: var(--fs-sm); font-weight: 650; }
+.pro-savebar__state:empty { display: none; }
+
+/* --------------------------------------------------------------------------
+   Réglages
+   -------------------------------------------------------------------------- */
+.pro-settings .card { padding: var(--s-5); }
+.pro-settings .card__title { font-size: var(--fs-xl); }
+.pro-section__form, .pro-settings .pro-form, .pro-hours { margin-top: var(--s-4); }
+
+.pro-hours { display: grid; }
+.pro-hours__day { margin: 0; padding: var(--s-1) 0 var(--s-3); border: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.pro-hours__day:last-child { border-bottom: 0; }
+.pro-hours__ranges { display: grid; gap: var(--s-2); }
+.pro-hours__range { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 40px; align-items: center; gap: var(--s-2); }
+.pro-hours__range .field__input {
+  min-height: 48px;
+  padding: 10px;
+  border: 1.5px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--card);
+  font-size: max(16px, 1rem);
+  font-variant-numeric: tabular-nums;
+}
+.pro-hours__range .field__input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 4px rgba(35, 65, 58, .2); }
+.pro-hours__sep { color: var(--ink-2); font-size: var(--fs-sm); }
+.pro-hours__spacer { width: 40px; }
+.pro-hours__day .field__error { margin-top: var(--s-2); }
+
+.pro-services { margin-block: var(--s-4); }
+.pro-svc { display: flex; align-items: stretch; }
+.pro-svc__main { flex: 1; min-width: 0; }
+.pro-svc__main > .icon { color: var(--ink-2); width: 18px; height: 18px; }
+.pro-svc__order { display: flex; flex-direction: column; justify-content: center; padding-right: 4px; border-left: 1px solid var(--line); }
+.pro-svc.is-inactive .list__title { color: var(--ink-2); text-decoration: line-through; text-decoration-thickness: 1px; }
+.pro-flip { transform: rotate(180deg); }
+
+.pro-url { font-size: max(16px, .9375rem); color: var(--green); }
+.pro-actions-row { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+
+/* --------------------------------------------------------------------------
+   Connexion
+   -------------------------------------------------------------------------- */
+.pro-login { display: grid; gap: var(--s-6); padding-top: var(--s-7); }
+.pro-login__form { padding: var(--s-5); }
+
+/* --------------------------------------------------------------------------
+   Mouvement réduit
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .pro-scroller .timeline, .pro-agenda__main { transition: none; }
+  .pro-fab:active { transform: none; }
+}

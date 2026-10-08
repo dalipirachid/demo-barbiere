@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Agenda — [À COMPLÉTER] Nom du salon</title>
+  <meta name="description" content="Espace de la barbière : agenda du jour, clients et réglages du salon.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#23413A">
+  <meta name="color-scheme" content="light">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Agenda">
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="../icons/pro-favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../icons/pro-favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="../icons/pro-apple-touch-icon.png">
+
+  <link rel="preload" href="../fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../fonts/young-serif-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../css/app.css">
+  <link rel="stylesheet" href="../css/pro.css">
+
+  <script src="../config.js"></script>
+  <script type="module" src="../js/pro/main.js"></script>
+</head>
+<body class="app app--pro">
+  <a class="skip-link" href="#app">Aller au contenu</a>
+
+  <!-- Bandeau affiché seulement en mode démo (config.js vide) -->
+  <div class="demo-banner" id="demo-banner" role="note" hidden>
+    <span class="demo-banner__tag">Démo</span>
+    <span class="demo-banner__text">Données fictives, enregistrées seulement sur cet appareil.</span>
+  </div>
+  <script>
+    (function () {
+      var c = window.APP_CONFIG || {};
+      if (!(c.supabaseUrl && c.supabaseKey)) document.getElementById('demo-banner').hidden = false;
+    })();
+  </script>
+
+  <noscript>
+    <div class="noscript">
+      <h1>Agenda du salon</h1>
+      <p>L’agenda a besoin de JavaScript. Activez-le dans les réglages du navigateur, puis rechargez la page.</p>
+    </div>
+  </noscript>
+
+  <main id="app" tabindex="-1"></main>
+
+  <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="toasts" class="toasts"></div>
+</body>
+</html>

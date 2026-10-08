@@ -1,0 +1,286 @@
+/* ==========================================================================
+   Planning Barbière — écrans côté client (réservation)
+   --------------------------------------------------------------------------
+   Uniquement la mise en page propre aux écrans client. Jetons et composants
+   (.signboard, .pricelist, .daystrip, .slots, .ticket, .sticky-cta…) :
+   css/app.css — catalogue : styleguide.html.
+
+   Sommaire
+     1. Commun (bandeau démo, titres d'écran, re-rendu silencieux)
+     2. Accueil
+     3. Réservation : progression, prestation, jours, créneaux
+     4. Formulaire de coordonnées
+     5. Ticket de confirmation
+     6. Mes rendez-vous
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. Commun
+   ========================================================================== */
+
+/* Lien « Espace barbière » ajouté au bandeau démo */
+.demo-banner__link {
+  color: var(--green);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Le routeur place le focus sur le titre de chaque écran : ce n'est pas une
+   commande, pas d'anneau de focus. */
+[data-screen-title]:focus { outline: none; }
+
+/* Re-rendu silencieux (données mises à jour) : pas de nouvelle entrée en cascade */
+.is-quiet .reveal { animation: none; }
+
+/* Pied de page : pas de marge géante sous les écrans à barre collante */
+.app--client .app-footer { padding-top: var(--s-2); }
+
+
+/* ==========================================================================
+   2. Accueil
+   ========================================================================== */
+
+.home { --gap: var(--s-5); }
+
+.home__skeleton-sign { height: 168px; }
+
+.home__notice-text { white-space: pre-line; }
+
+/* L'enseigne : un peu d'air sous le liseré rayé du poteau */
+.home .signboard { margin-bottom: var(--s-1); }
+
+.home__info {
+  display: grid;
+  gap: var(--s-2);
+  padding-block: var(--s-3);
+}
+
+.home__status {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 32px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.home__status-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-inline: 7px;
+  border-radius: 50%;
+  background: var(--oxblood);
+  box-shadow: 0 0 0 4px var(--danger-bg);
+}
+.home__status.is-open .home__status-dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 4px var(--ok-bg);
+}
+
+.home__address {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  min-height: var(--tap);
+  padding-block: var(--s-1);
+  color: var(--ink);
+  text-decoration: none;
+}
+.home__address > .icon { margin-top: 2px; color: var(--green); }
+.home__address-text { min-width: 0; line-height: 1.4; }
+.home__address-hint {
+  display: block;
+  color: var(--green);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+.home__address:hover { color: var(--ink); }
+
+.home__contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+
+.home__book { display: grid; gap: var(--s-3); }
+.home__next {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 28px;
+  color: var(--ink-2);
+  font-size: .9375rem;
+  font-variant-numeric: tabular-nums;
+}
+.home__next > .icon { color: var(--green); }
+.home__next strong { color: var(--ink); font-weight: 700; }
+.home__next-skeleton { flex: 1; max-width: 260px; margin: 0; }
+
+.home__suspended .btn { margin-top: var(--s-1); }
+
+.home__mine .section-title,
+.home__tarifs .section-title { margin-top: var(--s-2); }
+.home__mine-icon { width: 40px; height: 40px; }
+.home__mine-icon .icon { width: 20px; height: 20px; }
+.home__mine-all { margin-top: var(--s-2); margin-left: calc(-1 * var(--s-3)); }
+.home__mine-all .icon { width: 18px; height: 18px; }
+
+.home__tarifs { scroll-margin-top: var(--s-4); }
+.home__tarifs-hint { margin: calc(-1 * var(--s-1)) 0 var(--s-3); }
+.home__tarifs .pricelist { margin-inline: calc(-1 * var(--s-2)); }
+.home__tarifs .pricelist--board { margin-inline: 0; }
+.home__demo-note { margin-top: var(--s-4); font-style: italic; }
+
+
+/* ==========================================================================
+   3. Réservation : progression, prestation, jours, créneaux
+   ========================================================================== */
+
+.booking { --gap: var(--s-5); padding-top: var(--s-4); }
+.booking .section-title { margin: 0 0 var(--s-3); }
+.booking__skeleton-card { height: 72px; }
+
+.booking-progress { display: grid; gap: var(--s-2); }
+.booking-progress__label {
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.booking-progress__step { color: var(--oxblood); }
+
+/* Rappel de la prestation choisie */
+.booking-service,
+.booking-recap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding-block: var(--s-3);
+  padding-right: var(--s-2);
+}
+.booking-service__text,
+.booking-recap__text { flex: 1; min-width: 0; }
+.booking-service__name,
+.booking-recap__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.25;
+}
+.booking-service__meta,
+.booking-recap__meta {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.booking-recap__meta:first-of-type { color: var(--ink); font-weight: 650; }
+
+/* Un jour « complet » ou « terminé » reste choisissable (il propose le prochain créneau) */
+.daystrip__day--full { cursor: pointer; }
+.daystrip__day--full[aria-pressed="true"] { border-style: solid; }
+
+/* Créneaux : état vide plus compact que l'état vide plein écran */
+.booking-empty { padding-block: var(--s-6); }
+.booking-empty .empty__icon { width: 60px; height: 60px; }
+.booking-empty .btn { white-space: normal; }
+
+
+/* ==========================================================================
+   4. Formulaire de coordonnées
+   ========================================================================== */
+
+.booking-form__fields { --gap: var(--s-4); }
+.booking-form__note { min-height: 80px; }
+.booking-form__checks { display: grid; gap: 0; }
+/* Bloc rendu visible d'un coup (case + message) quand le consentement manque */
+.booking-form__consent { scroll-margin-block: var(--s-2); }
+.booking-form__check-error { margin: calc(-1 * var(--s-2)) 0 var(--s-2) 36px; }
+.booking-form .check__label a { white-space: nowrap; }
+.booking-form__alert p + p { margin-top: var(--s-1); }
+.booking-form__alert a { color: inherit; font-weight: 700; }
+
+/* La barre collante ne contient que le bouton : il prend toute la largeur */
+.booking-form .sticky-cta .btn { flex: 1; }
+
+
+/* ==========================================================================
+   5. Ticket de confirmation
+   ========================================================================== */
+
+.rdv { --gap: var(--s-5); padding-top: var(--s-4); }
+
+.rdv__ticket--cancelled .ticket__kicker { color: var(--oxblood); }
+.rdv__ticket--past .ticket__kicker { color: var(--ink-2); }
+.rdv__ticket--past .ticket__title { padding-right: 0; }   /* pas de tampon sur un RDV passé */
+
+.rdv__address {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  line-height: 1.4;
+}
+.rdv__address > .icon { margin-top: 2px; color: var(--green); }
+.rdv__salon { display: block; font-weight: 700; }
+
+.rdv__actions { display: grid; gap: var(--s-2); margin-top: var(--s-2); }
+.rdv__actions .btn { white-space: normal; }
+
+.rdv__mine a { color: var(--green); font-weight: 650; }
+
+/* Lien du ticket à garder (seule clé du RDV hors de ce navigateur) */
+.rdv__keep { display: grid; gap: var(--s-3); padding-block: var(--s-4); }
+.rdv__keep-title { font-size: var(--fs-lg); }
+.rdv__keep-text { color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.45; }
+.rdv__link {
+  padding: var(--s-2) var(--s-3);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;          /* un appui sélectionne tout le lien, prêt à copier */
+}
+.rdv__keep .btn { white-space: normal; }
+
+.rdv__install { display: grid; gap: var(--s-3); padding-block: var(--s-3); }
+.rdv__install-text {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.rdv__install-text > .icon { margin-top: 1px; color: var(--green); }
+
+/* Feuille « trop tard pour annuler » : numéro du salon bien lisible */
+.cancel-phone {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ==========================================================================
+   6. Mes rendez-vous
+   ========================================================================== */
+
+.myrdv-page { --gap: var(--s-5); padding-top: var(--s-4); }
+.myrdv-page .section-title { margin-top: 0; }
+.myrdv-list { --gap: var(--s-3); }
+.myrdv__service { min-width: 0; }
+.myrdv__when { margin-top: var(--s-1); font-weight: 650; font-variant-numeric: tabular-nums; }
+.myrdv--cancelled .myrdv__service,
+.myrdv--cancelled .myrdv__when { color: var(--ink-2); }
+.myrdv--cancelled .myrdv__when { text-decoration: line-through; text-decoration-thickness: 1px; }

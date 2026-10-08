@@ -1,0 +1,21 @@
+Polices auto-hébergées (aucune requête vers Google : conformité RGPD)
+=====================================================================
+
+Les fichiers .woff2 de ce dossier sont des sous-ensembles « latin » et
+« latin-ext » téléchargés depuis Google Fonts le 2026-10-07, sans modification.
+Ils sont distribués sous la licence SIL Open Font License, version 1.1 :
+https://openfontlicense.org  (texte officiel : https://scripts.sil.org/OFL)
+
+Young Serif (Regular 400, version 3.003)
+  young-serif-latin.woff2, young-serif-latin-ext.woff2
+  Copyright 2023 The Young Serif Project Authors
+  (https://github.com/noirblancrouge/YoungSerif)
+
+Hanken Grotesk (variable, graisse 400 à 700, version 3.013)
+  hanken-grotesk-latin.woff2, hanken-grotesk-latin-ext.woff2
+  Copyright 2021 The Hanken Grotesk Project Authors
+  (https://github.com/marcologous/hanken-grotesk)
+
+La licence OFL autorise l'utilisation, l'intégration dans un site ou une
+application et la redistribution, gratuitement, y compris dans un cadre
+commercial. Les polices ne peuvent pas être vendues seules.

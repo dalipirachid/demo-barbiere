@@ -5,18 +5,19 @@
 
 import { html, render, icon } from '../ui/dom.js';
 import { errorMessage } from '../core/errors.js';
-import { store, textField, setFieldErrors, uid } from './shared.js';
+import { store, textField, setFieldErrors, uid, salonName } from './shared.js';
 
 export function renderLogin(el, { message = '', onSuccess = () => {} } = {}) {
   const errId = uid('connexion-err');
   render(el, html`
     <div class="page pro-login">
       <header class="signboard">
+        <span class="blason" data-crest><img src="../img/blason.webp" alt="Private Barbière" width="655" height="742" decoding="async"></span>
         <p class="signboard__kicker">Espace barbière</p>
         <h1 class="signboard__name" data-salon>Agenda du salon</h1>
       </header>
       <form class="card stack pro-login__form" novalidate>
-        <h2 class="h3">Connexion</h2>
+        <h2 class="h3 pro-login__title">Connexion</h2>
         ${message ? html`<div class="notice notice--info" role="status">${icon('info')}<p>${message}</p></div>` : ''}
         ${textField({ name: 'email', label: 'E-mail', type: 'email', inputmode: 'email', autocomplete: 'username', required: true })}
         ${textField({ name: 'password', label: 'Mot de passe', type: 'password', autocomplete: 'current-password', required: true })}
@@ -27,10 +28,13 @@ export function renderLogin(el, { message = '', onSuccess = () => {} } = {}) {
     </div>`);
   document.title = 'Connexion — Agenda';
 
-  // Nom du salon (lecture publique), pour reconnaître la page.
+  // Nom du salon (lecture publique), pour reconnaître la page ; titre générique tant
+  // qu'il n'est pas choisi. Blason retiré si la barbière a choisi de ne pas l'afficher.
   store.getSalon().then((salon) => {
     const name = el.querySelector('[data-salon]');
-    if (name && salon && salon.name) name.textContent = salon.name;
+    if (name && salonName(salon)) name.textContent = salonName(salon);
+    const crest = el.querySelector('[data-crest]');
+    if (crest && salon && salon.showCrest === false) crest.remove();
   }).catch(() => { /* hors connexion : on garde le titre générique */ });
 
   const form = el.querySelector('form');

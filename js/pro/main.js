@@ -1,7 +1,10 @@
 /**
  * Espace barbière — point d'entrée (app/pro/index.html).
  *
- * Routes (hash) : #/agenda[/<ymd>] · #/clients · #/clients/<id> · #/reglages.
+ * Routes (hash) : #/agenda[/<ymd>] · #/clients · #/clients/<id> · #/reglages
+ * · #/bienvenue[/<étape>] (assistant de configuration, sans barre d'onglets).
+ * Première ouverture de la session : si le salon reste à configurer (needsSetup),
+ * l'assistant s'ouvre, une fois par session (sessionStorage, §8 bis).
  * Le bouton Retour d'Android suit l'historique des routes ; les feuilles
  * ouvertes se ferment d'abord (géré par js/ui/dom.js).
  * Chaque écran est un objet { mount(el, params), update?(params), refresh(), unmount() },
@@ -15,9 +18,11 @@ import { todayYMD, dayRangeISO } from '../core/dates.js';
 import { createAgendaView } from './agenda.js';
 import { createClientsView, createClientView } from './clients.js';
 import { createSettingsView } from './settings.js';
+import { createAssistantView, ASSISTANT_SEEN_KEY, parseStep } from './assistant.js';
 import { renderLogin } from './login.js';
+import { needsSetup } from '../core/setup.js';
 import {
-  store, isRemote, nav, loadSalon, tzOf, readLS, LASTSEEN_KEY, isValidYMD, showError,
+  store, isRemote, nav, loadSalon, tzOf, readLS, readSS, LASTSEEN_KEY, isValidYMD, showError, loaderHtml,
 } from './shared.js';
 
 registerSW('../sw.js');
@@ -29,12 +34,14 @@ const VIEWS = {
   clients: createClientsView,
   client: createClientView,
   reglages: createSettingsView,
+  bienvenue: createAssistantView,
 };
-const TAB_OF = { agenda: 'agenda', clients: 'clients', client: 'clients', reglages: 'reglages' };
+const TAB_OF = { agenda: 'agenda', clients: 'clients', client: 'clients', reglages: 'reglages', bienvenue: '' };
 
 let current = null;          // { name, view }
 let currentHash = '';
 let started = false;
+let setupChecked = false;    // ouverture de l'assistant déjà décidée pour cette session de page
 
 /* ==========================================================================
    Barre d'onglets
@@ -113,6 +120,7 @@ function parseRoute(hash) {
   }
   if (parts[0] === 'clients') return parts[1] ? { name: 'client', params: { id: parts[1] } } : { name: 'clients', params: {} };
   if (parts[0] === 'reglages') return { name: 'reglages', params: {} };
+  if (parts[0] === 'bienvenue') return { name: 'bienvenue', params: { step: parseStep(parts[1] || 1) } };
   return null;
 }
 
@@ -125,6 +133,11 @@ function route() {
     showLogin();
     return;
   }
+  if (!setupChecked) {
+    setupChecked = true;
+    openAssistantIfNeeded();
+    return;
+  }
   const r = parseRoute(location.hash);
   if (!r) {
     nav.go('#/agenda', { replace: true });
@@ -132,7 +145,8 @@ function route() {
   }
   nav.previousHash = currentHash;
   currentHash = location.hash;
-  tabbar.hidden = false;
+  // L'assistant est un parcours à part : ni onglets, ni badge ; il se quitte par « Plus tard ».
+  tabbar.hidden = r.name === 'bienvenue';
   setTab(TAB_OF[r.name]);
 
   // Même écran (changement de jour de l'agenda) : mise à jour sans tout reconstruire.
@@ -151,6 +165,31 @@ function route() {
   if (started) root.focus({ preventScroll: true });
   started = true;
   refreshBadge();
+}
+
+/* ==========================================================================
+   Assistant de configuration : ouvert d'office une fois par session
+   ========================================================================== */
+
+/**
+ * Premier affichage (après connexion en ligne) : si le salon reste à configurer et
+ * que l'assistant n'a pas encore été proposé pendant cette session, il remplace
+ * l'écran demandé (sans nouvelle entrée d'historique). « Plus tard » ramène à l'agenda.
+ */
+async function openAssistantIfNeeded() {
+  let open = false;
+  if (!readSS(ASSISTANT_SEEN_KEY) && !location.hash.startsWith('#/bienvenue')) {
+    render(root, html`<div class="page">${loaderHtml('Chargement…')}</div>`);
+    try {
+      open = needsSetup(await loadSalon());
+    } catch {
+      open = false;   // hors connexion : l'agenda affichera lui-même l'erreur
+    }
+  }
+  if (open) {
+    try { history.replaceState(null, '', '#/bienvenue'); } catch { /* adresse inchangée : écran demandé */ }
+  }
+  route();
 }
 
 /* ==========================================================================

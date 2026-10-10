@@ -171,8 +171,8 @@ function view({ service, when, values }) {
       <section class="card card--inset booking-recap reveal" style="--i: 0" aria-label="Votre rendez-vous">
         <div class="booking-recap__text">
           <p class="booking-recap__title">${service.name}</p>
-          <p class="booking-recap__meta">${when} · ${fmtPrice(service.priceCents)}</p>
-          <p class="booking-recap__meta">${fmtDuration(service.durationMin)}</p>
+          <p class="booking-recap__meta">${when}</p>
+          <p class="booking-recap__meta">${fmtDuration(service.durationMin)} · <span class="nowrap">${fmtPrice(service.priceCents)}</span></p>
         </div>
         <button class="btn btn--ghost btn--sm" type="button" data-action="back" aria-label="Modifier le jour ou l’heure">Modifier</button>
       </section>

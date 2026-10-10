@@ -8,14 +8,17 @@
  * Toucher un espace libre → nouveau RDV à cette heure ; glisser à gauche ou à
  * droite → jour suivant / précédent. Sur tablette (≥ 900 px), le détail
  * d'un RDV s'affiche dans un panneau à droite au lieu d'une feuille.
+ * Tant que le salon reste à configurer (needsSetup), une carte discrète
+ * « Configurer mon salon » ouvre l'assistant (§8 bis).
  */
 
-import { html, render, fragment, icon, announce } from '../ui/dom.js';
+import { html, render, fragment, icon, raw, announce } from '../ui/dom.js';
 import {
   todayYMD, addDaysYMD, weekdayISO, dayRangeISO, parseYMD, zonedParts, fmtTime, fmtClock,
   fmtDayShort, fmtDayLong, fmtRelativeDay, fmtPrice, fmtDuration,
 } from '../core/dates.js';
 import { dayIntervals, isDayOpen } from '../core/slots.js';
+import { needsSetup, salonTodo } from '../core/setup.js';
 import { openAppointmentSheet, mountAppointmentDetail } from './appointment.js';
 import { openAddChooser, openNewAppointment } from './rdv-form.js';
 import { deleteBlockFlow } from './block-form.js';
@@ -25,12 +28,26 @@ import {
 import {
   store, loadSalon, tzOf, ymdOf, nav, isValidYMD, goToAgenda, readLS, writeLS, LASTSEEN_KEY,
   fullName, shortName, plural, dayTitle, fmtIn, bool, STATUS_LABELS, telHref, smsHref, reminderText,
-  showError,
+  showError, salonName,
 } from './shared.js';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 const PANEL_MQ = '(min-width: 900px)';
+
+/** Pictogramme « en ligne » (globe), même dessin que ceux de js/ui/dom.js (24 × 24, trait). */
+const GLOBE_ICON = raw('<svg class="icon icon--globe" viewBox="0 0 24 24" width="24" height="24" fill="none" '
+  + 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">'
+  + '<circle cx="12" cy="12" r="8.75"/><path d="M3.5 12h17M12 3.25c2.3 2.4 3.5 5.3 3.5 8.75s-1.2 6.35-3.5 8.75'
+  + 'M12 3.25C9.7 5.65 8.5 8.55 8.5 12s1.2 6.35 3.5 8.75"/></svg>');
+
+/** Étiquette de statut d'un RDV de la frise : pictogramme + mot (le mot disparaît sur un RDV court). */
+function statusTag(a) {
+  if (a.status === 'done') return html`<span class="pro-ev__tag pro-ev__tag--done">${icon('coche')}<span class="pro-ev__tagtext">honoré</span></span>`;
+  if (a.status === 'no_show') return html`<span class="pro-ev__tag pro-ev__tag--noshow">${icon('alerte')}<span class="pro-ev__tagtext">lapin</span></span>`;
+  if (a.source === 'online') return html`<span class="pro-ev__tag">${GLOBE_ICON}<span class="pro-ev__tagtext">en ligne</span></span>`;
+  return '';
+}
 
 /* ==========================================================================
    Calculs (purs : données chargées + heure courante)
@@ -157,6 +174,24 @@ export function createAgendaView() {
       <button type="button" class="icon-btn" data-nav="1" aria-label="Jour suivant">${icon('chevron-droite')}</button>`;
   }
 
+  /** Carte « Configurer mon salon » : ce qui manque encore, et l'accès à l'assistant. */
+  function setupHtml(salon) {
+    if (!needsSetup(salon)) return '';
+    const todo = salonTodo(salon);
+    return html`
+      <section class="pro-setup" aria-labelledby="pro-setup-titre">
+        <span class="pro-setup__icon" aria-hidden="true">${icon('reglages')}</span>
+        <div class="pro-setup__body">
+          <h2 class="pro-setup__title" id="pro-setup-titre">Configurer mon salon</h2>
+          ${todo.length
+            ? html`<div class="pro-setup__text">À compléter sur votre page :
+                <ul class="pro-setup__todo">${todo.map((t) => html`<li>${t.label.toLowerCase()}</li>`)}</ul></div>`
+            : html`<p class="pro-setup__text">Vérifiez vos horaires et vos prestations, puis terminez l’assistant.</p>`}
+          <a class="btn btn--ghost btn--sm pro-setup__btn" href="#/bienvenue" data-act="open-setup"><span>Ouvrir l’assistant</span>${icon('chevron-droite')}</a>
+        </div>
+      </section>`;
+  }
+
   function weekHtml(d) {
     const counts = {};
     for (const a of d.week) {
@@ -218,7 +253,7 @@ export function createAgendaView() {
       const later = d.upcoming.find((x) => x.status === 'confirmed' && Date.parse(x.start) > nowMs && ymdOf(x.start, tz) !== d.today);
       return html`
         <section class="card pro-next pro-next--empty" aria-label="Prochain client">
-          <p class="smallcaps muted">Prochain client</p>
+          <p class="smallcaps pro-next__label">Prochain client</p>
           <p class="pro-next__none">${current ? 'C’est le dernier rendez-vous de la journée.' : 'Plus de rendez-vous aujourd’hui.'}</p>
           ${currentLine}
           ${later ? html`<button type="button" class="btn btn--ghost pro-next__later" data-open="${later.id}">
@@ -229,7 +264,7 @@ export function createAgendaView() {
     const dur = Math.round((Date.parse(a.end) - Date.parse(a.start)) / 60000);
     return html`
       <section class="card pro-next" aria-labelledby="pro-next-titre">
-        <p class="pro-next__kicker" id="pro-next-titre"><span class="smallcaps">Prochain client</span>
+        <p class="pro-next__kicker" id="pro-next-titre"><span class="smallcaps pro-next__label">Prochain client</span>
           <span class="pro-next__in">${fmtIn(Date.parse(a.start) - nowMs)}</span></p>
         <button type="button" class="pro-next__main" data-open="${a.id}"
           aria-label="${fullName(cl)}, ${fmtTime(a.start, tz)}, ${a.serviceName} : voir le rendez-vous">
@@ -295,11 +330,8 @@ export function createAgendaView() {
       isNew(a) ? 'nouvelle réservation' : '',
     ].filter(Boolean).join(', ');
     const style = `--top: calc(var(--ppm) * ${ev.s - win.start}); --height: calc(var(--ppm) * ${dur}); --col: ${ev.col}; --cols: ${ev.cols}`;
-    const tag = a.status === 'done' ? html`<span class="pro-ev__tag pro-ev__tag--done">honoré</span>`
-      : a.status === 'no_show' ? html`<span class="pro-ev__tag pro-ev__tag--noshow">lapin</span>`
-        : a.source === 'online' ? html`<span class="pro-ev__tag">en ligne</span>` : '';
     return html`<button type="button" class="${cls.join(' ')}" style="${style}" data-appt="${a.id}" aria-label="${label}">
-      <span class="timeline__time">${fmtTime(a.start, tz)}${tag}</span>
+      <span class="timeline__time">${fmtTime(a.start, tz)}${statusTag(a)}</span>
       <span class="timeline__name">${shortName(a.client)}</span>
       <span class="timeline__service">${a.serviceName}</span>
     </button>`;
@@ -404,6 +436,7 @@ export function createAgendaView() {
         <div class="appbar__titles"><p class="appbar__title">Agenda</p><p class="appbar__subtitle">Chargement…</p></div>
       </header>
       <div class="page page--wide pro-agenda-page">
+        <div data-region="setup"></div>
         <div data-region="week"><span class="skeleton skeleton--block pro-skel-week"></span></div>
         <div data-region="news"></div>
         <div class="pro-agenda">
@@ -498,12 +531,14 @@ export function createAgendaView() {
     const key = focusKey(document.activeElement);
 
     render(region('head'), headHtml(d));
+    render(region('setup'), setupHtml(d.salon));
     render(region('week'), weekHtml(d));
     render(region('news'), newsHtml(d));
     const main = region('main');
     render(main, mainHtml(d, c, nowMs));
     main.removeAttribute('aria-busy');
-    document.title = `Agenda — ${d.salon.name}`;
+    const name = salonName(d.salon);
+    document.title = name ? `Agenda — ${name}` : 'Agenda du salon';
 
     const scroller = root.querySelector('.pro-scroller');
     if (scroller) {

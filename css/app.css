@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Planning Barbière — système de design « l'enseigne de quartier »
+   Planning Barbière — système de design « Private Barbière »
+   Nuit, bleu roi et or : un salon privé, la nuit.
    --------------------------------------------------------------------------
    Un seul fichier pour les deux applis (client et barbière).
    Direction artistique : docs/DESIGN.md — catalogue visuel : app/styleguide.html
@@ -7,41 +8,46 @@
    en réutilisant ces jetons et ces composants (nommage BEM simple :
    .bloc, .bloc__element, .bloc--variante ; états via attributs ARIA).
 
+   Thème entièrement sombre. L'or ne sert qu'à ce qui compte (action
+   principale, sélection, prix, filets) ; le bleu roi donne la profondeur et
+   n'est JAMAIS une couleur de texte sur fond sombre (en fond, texte --ivoire).
+
    Sommaire
      1. Polices (auto-hébergées, RGPD)
-     2. Jetons (couleurs, rayons, ombres, espacements, typo)
+     2. Jetons (couleurs, rayons, ombres, espacements, typo) + alias anciens noms
      3. Base & reset léger (mobile, safe-area, focus)
      4. Mise en page (.page, .stack, .cluster…)
-     5. Typographie & utilitaires
+     5. Typographie & utilitaires (.marbre, .filet-orne…)
      6. Composants
         .btn .icon-btn .icon .chip .card .badge .field .check .switch
         .pole .spinner .loader .pricelist .daystrip .slots .ticket .sheet
         .toast .tabbar .appbar .sticky-cta .empty .skeleton .demo-banner
-        .timeline .stat .list .avatar .notice .signboard .install-help
-        .prose .app-footer
+        .timeline .stat .list .avatar .notice .signboard .blason
+        .install-help .prose .app-footer
      7. Mouvement (.reveal) et prefers-reduced-motion
    ========================================================================== */
 
 
 /* ==========================================================================
-   1. Polices — Young Serif (titres) et Hanken Grotesk variable 400–700 (texte)
+   1. Polices — Cinzel variable 400–900 (titres, chiffres clés ; l'appli
+   emploie 600 et 700) et Hanken Grotesk variable 400–700 (texte).
    Sous-ensembles latin + latin-ext, licence OFL (voir fonts/LICENCES.txt).
    ========================================================================== */
 
 @font-face {
-  font-family: 'Young Serif';
+  font-family: 'Cinzel';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 900;
   font-display: swap;
-  src: url('../fonts/young-serif-latin-ext.woff2') format('woff2');
+  src: url('../fonts/cinzel-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: 'Young Serif';
+  font-family: 'Cinzel';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 900;
   font-display: swap;
-  src: url('../fonts/young-serif-latin.woff2') format('woff2');
+  src: url('../fonts/cinzel-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -64,48 +70,75 @@
 
 /* ==========================================================================
    2. Jetons
+   Contrastes WCAG calculés (texte < 18 px : ≥ 4,5:1 ; repères : ≥ 3:1) :
+     --ivoire / --nuit 16,4 · --ivoire-2 / --carte 9,4 · --ivoire-2 / --carte-2 8,3
+     --or / --nuit 9,6 · --nuit / --or (bouton) 9,6 · --carte / --or 8,3
+     --ivoire / --roi 6,3 · --danger / --carte 5,5 · --or-clair / --or-bg 9,0
+     --filet-fort (contour des commandes) / --carte 3,4 et / --nuit 3,6
+     --roi-2 (repère graphique) / --carte 3,2 — --roi seul : 2,6, jamais en texte
    ========================================================================== */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  /* — Couleurs (DESIGN.md) — */
-  --paper:   #F4EEE4;              /* fond général, crème carrelage */
-  --paper-2: #EAE1D2;              /* surfaces secondaires, bandes */
-  --card:    #FFFCF7;              /* cartes, champs */
-  --ink:     #1C2925;              /* texte principal */
-  --ink-2:   #55625D;              /* texte secondaire (AA sur --paper : 5,5:1) */
-  --green:   #23413A;              /* dominante : en-têtes, boutons principaux */
-  --green-2: #2F5A50;              /* survol / état actif */
-  --green-3: #17302A;              /* appui, fonds sombres (toast) */
-  --oxblood: #9B3426;              /* accent : sélection, alertes, rayure */
-  --oxblood-2: #7E2A1E;            /* accent foncé (texte sur fond teinté) */
-  --brass:   #B58A45;              /* filets, détails — jamais pour du texte courant */
-  --brass-2: #D9BE8C;              /* laiton clair, détails sur fond vert */
-  --line:    rgba(28, 41, 37, .14);/* séparateurs */
-  --line-2:  rgba(28, 41, 37, .26);/* contours de champs, bordures marquées */
+  /* — Palette (docs/DESIGN.md) — */
+  --nuit:      #070B18;            /* fond de page */
+  --nuit-2:    #0C1430;            /* bandes, barre d'onglets, en-têtes, feuilles */
+  --carte:     #111B3D;            /* cartes, champs */
+  --voile-fond: .2;               /* voile sur le marbre du fond de page (0 = marbre brut) */
+  --verre:     rgba(13, 21, 50, .86);   /* verre fumé des cartes posées sur le marbre */
+  --carte-2:   #18244E;            /* survol, cartes actives, fond des badges */
+  --ivoire:    #F2EAD8;            /* texte principal */
+  --ivoire-2:  #C6CDE1;            /* texte secondaire — 4,7:1 même sur le 1 % le plus clair du marbre */
+  --roi:       #2347C5;            /* bleu roi : fonds d'accent, RDV « en ligne » */
+  --roi-2:     #3A60E6;            /* bleu roi clair : repères graphiques (≥ 3:1) */
+  --or:        #D6B15E;            /* bouton principal (texte --nuit), sélection, prix */
+  --or-clair:  #EBCF8C;            /* texte doré sur fond sombre, survol */
+  --or-fonce:  #9E7A33;            /* bords, embouts, ombres dorées */
+  --filet:      rgba(214, 177, 94, .24);  /* séparateurs décoratifs */
+  --filet-fort: rgba(214, 177, 94, .55);  /* contour des champs et commandes (≥ 3:1) */
 
-  --ok:        #2E6B3F;            /* honoré */
-  --ok-bg:     #E1ECDF;
-  --warn:      #8A5A00;            /* lapin (no-show) */
-  --warn-bg:   #F6E8C8;
-  --danger-bg: #F5E1DB;            /* fond teinté sang-de-bœuf */
-  --green-bg:  #DCE6E1;            /* fond teinté vert */
-  --brass-bg:  #F3E7CF;            /* fond teinté laiton */
+  --ok:     #5CC28A;               /* honoré */
+  --warn:   #E9B44C;               /* lapin (no-show), à compléter */
+  --danger: #E8705F;               /* erreur, action destructrice */
+  --ok-bg:     rgba(92, 194, 138, .14);
+  --warn-bg:   rgba(233, 180, 76, .14);
+  --danger-bg: rgba(232, 112, 95, .14);
+  --or-bg:     rgba(214, 177, 94, .12);   /* fond teinté or (sélection discrète) */
+  --roi-bg:    rgba(35, 71, 197, .22);    /* fond teinté bleu roi */
 
-  --focus-color: var(--oxblood);   /* anneau de focus (redéfini sur fond sombre) */
+  --focus-color: var(--or-clair);  /* anneau de focus : or, 3 px */
+
+  /* — Alias des anciens noms (encore lus par client.css, pro.css et js/) —
+     Ne pas employer dans un nouveau code : utiliser les noms ci-dessus. */
+  --paper:     var(--nuit);
+  --paper-2:   var(--nuit-2);
+  --card:      var(--carte);
+  --ink:       var(--ivoire);
+  --ink-2:     var(--ivoire-2);
+  --green:     var(--or-clair);
+  --green-2:   var(--or);
+  --green-3:   var(--nuit-2);
+  --green-bg:  var(--or-bg);
+  --oxblood:   var(--or);
+  --oxblood-2: var(--or-clair);
+  --brass:     var(--or);
+  --brass-2:   var(--or-clair);
+  --brass-bg:  var(--or-bg);
+  --line:      var(--filet);
+  --line-2:    var(--filet-fort);
 
   /* — Rayure du poteau de barbier (signature : progression, créneau choisi, chargement) — */
   --pole: repeating-linear-gradient(-45deg,
-            var(--oxblood) 0 10px, var(--card) 10px 20px,
-            var(--green) 20px 30px, var(--card) 30px 40px);
+            var(--or) 0 8px, var(--nuit) 8px 16px,
+            var(--roi) 16px 24px, var(--nuit) 24px 32px);
   /* Même rayure en « tuile » raccordable : à utiliser avec background-size
      (56px, 28px…) pour l'animer sans saut (keyframes pole-turn-*). */
   --pole-tile: linear-gradient(-45deg,
-            var(--oxblood) 0 12.5%, var(--card) 0 25%, var(--green) 0 37.5%, var(--card) 0 50%,
-            var(--oxblood) 0 62.5%, var(--card) 0 75%, var(--green) 0 87.5%, var(--card) 0);
+            var(--or) 0 12.5%, var(--nuit) 0 25%, var(--roi) 0 37.5%, var(--nuit) 0 50%,
+            var(--or) 0 62.5%, var(--nuit) 0 75%, var(--roi) 0 87.5%, var(--nuit) 0);
   /* Hachures neutres (blocages, indisponibilités) */
-  --hatch: repeating-linear-gradient(-45deg, rgba(28, 41, 37, .075) 0 6px, transparent 6px 12px);
+  --hatch: repeating-linear-gradient(-45deg, rgba(242, 234, 216, .07) 0 6px, transparent 6px 12px);
 
   /* — Rayons — */
   --r-xs: 6px;
@@ -114,10 +147,10 @@
   --r-lg: 22px;
   --r-pill: 999px;
 
-  /* — Ombres chaudes (jamais grises) — */
-  --shadow-1: 0 1px 2px rgba(60, 40, 20, .06), 0 2px 10px rgba(60, 40, 20, .06);
-  --shadow-2: 0 2px 4px rgba(60, 40, 20, .06), 0 10px 28px rgba(60, 40, 20, .11);
-  --shadow-3: 0 -10px 40px rgba(60, 40, 20, .18);
+  /* — Ombres noires et profondes (jamais claires) — */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .32);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, .45), 0 16px 36px rgba(0, 0, 0, .45);
+  --shadow-3: 0 -14px 44px rgba(0, 0, 0, .6);
 
   /* — Espacements (échelle de 4 px) — */
   --s-1: 4px;
@@ -131,7 +164,7 @@
   --s-9: 56px;
 
   /* — Typographie — */
-  --font-display: 'Young Serif', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-display: 'Cinzel', 'Trajan Pro', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
   --font-body: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fs-xs: .75rem;     /* 12 px — petites capitales */
   --fs-sm: .875rem;    /* 14 px */
@@ -171,6 +204,8 @@ html {
   -webkit-tap-highlight-color: transparent;
   scroll-padding-top: calc(var(--appbar-h) + 12px);
   scroll-padding-bottom: calc(var(--bottom-space) + 12px);
+  background-color: var(--nuit);  /* rebond du défilement : jamais de blanc */
+  scrollbar-color: var(--or-fonce) var(--nuit);
 }
 
 body {
@@ -178,10 +213,11 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   padding-bottom: var(--bottom-space);
-  color: var(--ink);
-  background-color: var(--paper);
-  /* Carrelage métro, presque invisible : la crème du salon */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M0 .5h48M0 24.5h48M.5 0v24M24.5 24v24' stroke='%231C2925' stroke-opacity='.05' fill='none'/%3E%3C/svg%3E");
+  color: var(--ivoire);
+  background-color: var(--nuit);
+  isolation: isolate;               /* le marbre (z-index -1) reste derrière le contenu, devant ce fond */
+  /* Halo sombre très fin : le texte posé sur le marbre reste lisible même sur une veine d'or. */
+  text-shadow: 0 1px 2px rgba(3, 6, 16, .7);
   font-family: var(--font-body);
   font-size: var(--fs-md);
   line-height: 1.5;
@@ -192,6 +228,32 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-wrap: break-word;
+}
+
+/* Le fond de page EST le marbre (demande de la cliente, 2026-10-10) : image portrait
+   pour les téléphones, paysage pour les écrans larges, sous un voile léger
+   (--voile-fond). Mesuré : le marbre est surtout bleu sombre (pixel médian
+   rgb(16,38,112)) ; avec .2 de voile, l'ivoire y fait plus de 6:1 sur 99 % de la
+   surface ; seules les veines d'or descendent plus bas, d'où le halo du texte et
+   le verre fumé des cartes. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgb(5 8 20 / var(--voile-fond)), rgb(5 8 20 / var(--voile-fond))),
+    url('../img/marbre-fond.webp') center / cover no-repeat,
+    var(--nuit);
+}
+@media (orientation: landscape) and (min-width: 700px) {
+  body::before {
+    background:
+      linear-gradient(rgb(5 8 20 / var(--voile-fond)), rgb(5 8 20 / var(--voile-fond))),
+      url('../img/marbre.webp') center / cover no-repeat,
+      var(--nuit);
+  }
 }
 
 /* Place automatique sous une barre collante ou une barre d'onglets.
@@ -207,11 +269,12 @@ body {
 h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ul, ol { margin: 0; }
 ul[class], ol[class] { list-style: none; padding: 0; }
 
+/* Titres en Cinzel : capitales romaines, comme le ruban du blason */
 h1, h2, h3 {
   font-family: var(--font-display);
-  font-weight: 400;              /* Young Serif n'existe qu'en 400 : jamais de faux gras */
+  font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -.005em;
+  letter-spacing: .02em;
   text-wrap: balance;
 }
 h4, h5, h6 { font-size: inherit; font-weight: 700; }
@@ -221,15 +284,20 @@ img, video, canvas { display: block; max-width: 100%; height: auto; }
 button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 :where(button) { background: none; border: 0; padding: 0; cursor: pointer; }
 :where(button:disabled) { cursor: not-allowed; }
-:where(a) { color: var(--green); text-decoration-thickness: 1px; text-underline-offset: .18em; }
-:where(a:hover) { color: var(--green-2); }
+:where(a) {
+  color: var(--or-clair);
+  text-decoration-color: rgba(235, 207, 140, .45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .18em;
+}
+:where(a:hover) { color: var(--ivoire); text-decoration-color: currentColor; }
 button, a, label, summary, [role="button"] { touch-action: manipulation; }
 
 [hidden] { display: none !important; }
 
-::selection { background: rgba(155, 52, 38, .18); }
+::selection { background: rgba(214, 177, 94, .35); color: var(--ivoire); }
 
-/* Focus très visible, au clavier uniquement */
+/* Focus très visible (or, 3 px), au clavier uniquement */
 :focus-visible {
   outline: 3px solid var(--focus-color);
   outline-offset: 2px;
@@ -246,16 +314,26 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
    ========================================================================== */
 
 /* .page — colonne unique centrée (560 px), gouttières + safe-area.
-   .page--wide : agenda pro sur tablette (2 colonnes possibles via .page__cols). */
+   .page--wide : agenda pro sur tablette (2 colonnes possibles via .page__cols).
+   Barre d'état iOS translucide (black-translucent) : --page-safe-top vaut sa
+   hauteur quand l'écran commence par .page sans rien au-dessus pour la réserver
+   (production : accueil client .page > .signboard, page d'erreur). Ni appbar
+   (qui la réserve, la .page vient alors après elle) ni bandeau démo visible
+   (idem) : 0, pas de double espace. Un écran qui change son padding-top
+   l'ajoute : calc(var(--s-4) + var(--page-safe-top, 0px)).
+   Sélecteurs à la spécificité d'une classe (:where) : les écrans gardent la main. */
 .page {
+  --page-safe-top: 0px;
   width: 100%;
   max-width: var(--maxw);
   margin-inline: auto;
-  padding-top: var(--s-5);
+  padding-top: calc(var(--s-5) + var(--page-safe-top));
   padding-bottom: var(--s-8);
   padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
   padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
 }
+:where(#app) > .page:where(:first-child) { --page-safe-top: env(safe-area-inset-top, 0px); }
+:where(.demo-banner:not([hidden]) ~ #app) > .page:where(:first-child) { --page-safe-top: 0px; }
 .page--wide { max-width: var(--maxw-wide); }
 .page__cols { display: grid; gap: var(--s-6); }
 @media (min-width: 900px) {
@@ -264,6 +342,7 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 
 /* .stack — empilement vertical régulier (--gap pour ajuster) */
 .stack { display: flex; flex-direction: column; gap: var(--gap, var(--s-4)); }
+.card.stack { display: flex; }            /* .card (déclarée plus loin) remettrait display:block */
 .stack--xs { --gap: var(--s-1); }
 .stack--sm { --gap: var(--s-2); }
 .stack--lg { --gap: var(--s-6); }
@@ -285,45 +364,45 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
    5. Typographie & utilitaires
    ========================================================================== */
 
-.h1 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-3xl); line-height: 1.08; }
-.h2 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.12; }
-.h3 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-xl); line-height: 1.2; }
+.h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.875rem, 8.5vw, var(--fs-3xl)); line-height: 1.1; letter-spacing: .02em; }
+.h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl)); line-height: 1.14; letter-spacing: .02em; }
+.h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; line-height: 1.2; letter-spacing: .02em; }
 .display-num {                          /* grands chiffres (heure du prochain client) */
-  font-family: var(--font-display);
-  font-weight: 400;
+  font-family: var(--font-body);        /* Cinzel n'a que des capitales : une heure s'y lirait « 10H00 » */
+  font-weight: 700;
   font-size: var(--fs-hero);
   line-height: 1;
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -.01em;
+  letter-spacing: 0;
 }
-.lead { font-size: var(--fs-lg); line-height: 1.45; color: var(--ink-2); }
+.lead { font-size: var(--fs-lg); line-height: 1.45; color: var(--ivoire-2); }
 
 /* Petites capitales espacées — étiquettes, durées, jours, sections */
 .smallcaps {
   font-size: var(--fs-xs);
   font-weight: 650;
-  letter-spacing: .08em;
+  letter-spacing: .12em;
   text-transform: uppercase;
   line-height: 1.3;
 }
 
-/* Titre de section : petites capitales + filet */
+/* Titre de section : petites capitales dorées + filet */
 .section-title {
   display: flex;
   align-items: center;
   gap: var(--s-3);
   margin: var(--s-6) 0 var(--s-3);
-  color: var(--ink-2);
+  color: var(--or-clair);
   font-family: var(--font-body);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .14em;
   text-transform: uppercase;
 }
-.section-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.section-title::after { content: ""; flex: 1; height: 1px; background: var(--filet); }
 
-.muted { color: var(--ink-2); }
-.accent { color: var(--oxblood); }
+.muted { color: var(--ivoire-2); }
+.accent { color: var(--or-clair); }
 .tabular { font-variant-numeric: tabular-nums lining-nums; }
 .center { text-align: center; }
 .nowrap { white-space: nowrap; }
@@ -357,21 +436,45 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 .skip-link {
   position: absolute; left: var(--s-3); top: -100px; z-index: 300;
   padding: var(--s-2) var(--s-4); border-radius: var(--r-pill);
-  background: var(--green); color: var(--card); font-weight: 700;
+  background: var(--or); color: var(--nuit); font-weight: 700;
 }
 .skip-link:focus { top: calc(var(--s-3) + env(safe-area-inset-top, 0px)); }
 
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Filet laiton décoratif */
-.divider { border: 0; height: 1px; margin: var(--s-6) 0; background: var(--line); }
-.divider--brass {
-  height: 7px;
+/* Filet simple */
+.divider { border: 0; height: 1px; margin: var(--s-6) 0; background: var(--filet); }
+
+/* .filet-orne — filet d'or orné : fine ligne dorée, losange au centre
+   (CSS seul, sur <hr> ou <div aria-hidden="true">). Sépare les sections. */
+.filet-orne {
+  display: block;
+  height: 11px;
+  margin: var(--s-6) 0;
+  border: 0;
   background:
-    linear-gradient(var(--brass), var(--brass)) center / 100% 1px no-repeat,
-    radial-gradient(circle, var(--brass) 2.5px, transparent 3px) center / 7px 7px no-repeat;
-  opacity: .8;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 11'%3E%3Cpath d='M17 .6 22.4 5.5 17 10.4 11.6 5.5Z' fill='%23D6B15E'/%3E%3Cpath d='M17 3.4 19.3 5.5 17 7.6 14.7 5.5Z' fill='%23070B18'/%3E%3Ccircle cx='3' cy='5.5' r='1.3' fill='%23D6B15E'/%3E%3Ccircle cx='31' cy='5.5' r='1.3' fill='%23D6B15E'/%3E%3C/svg%3E") center / 34px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--or-fonce) 30%, var(--or) calc(100% - 21px), transparent calc(100% - 21px)) left center / 50% 1px no-repeat,
+    linear-gradient(270deg, transparent, var(--or-fonce) 30%, var(--or) calc(100% - 21px), transparent calc(100% - 21px)) right center / 50% 1px no-repeat;
+}
+
+/* .marbre — marbre bleu roi veiné d'or (img/marbre.webp) sous un voile sombre
+   dégradé, pour que le texte posé dessus reste lisible. Trois endroits
+   seulement (DESIGN.md) : l'enseigne cliente (.signboard l'emploie déjà),
+   le haut du ticket (intégré à .ticket), l'écran de connexion pro.
+   --voile : opacité du voile en haut (0 à 1, défaut .66 ; le bas est 0,22 plus
+   sombre). En dessous de .66, revérifier le contraste du texte posé dessus. */
+.signboard { --voile: .2; }          /* le blason est opaque : pas besoin d'un voile épais */
+.marbre,
+.signboard {
+  background-color: var(--nuit);
+  background-image:
+    linear-gradient(180deg, rgb(7 11 24 / var(--voile, .66)), rgb(7 11 24 / calc(var(--voile, .66) + .22))),
+    url('../img/marbre.webp');
+  background-position: center, center;
+  background-size: cover, cover;
+  background-repeat: no-repeat;
 }
 
 
@@ -397,16 +500,19 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 
 /* --------------------------------------------------------------------------
    .btn — bouton (ou lien <a class="btn">)
-   Variantes : --primary (vert), --accent (sang-de-bœuf), --ghost, --danger
+   Variantes : --primary (or, texte nuit), --accent (bleu roi, texte ivoire),
+               --ghost (texte or), --danger (corail)
    Tailles   : --lg (56 px), --sm (40 px, zone tactile étendue), --block (pleine largeur)
    États     : [disabled] / [aria-disabled=true], [aria-busy=true] (le poteau tourne)
+   Personnalisable par --btn-bg, --btn-fg, --btn-border (pro.css s'en sert).
    <button class="btn btn--primary btn--block btn--lg">Confirmer</button>
    -------------------------------------------------------------------------- */
 .btn {
-  --btn-bg: var(--card);
-  --btn-fg: var(--ink);
-  --btn-border: var(--line-2);
-  --btn-filet: transparent;
+  --btn-bg: var(--carte);
+  --btn-fg: var(--ivoire);
+  --btn-border: var(--filet-fort);
+  --btn-sheen: none;
+  --btn-shadow: none;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -416,9 +522,10 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   padding: 0 1.375rem;
   border: 1.5px solid var(--btn-border);
   border-radius: var(--r-pill);
-  background: var(--btn-bg);
+  background-color: var(--btn-bg);
+  background-image: var(--btn-sheen);
   color: var(--btn-fg);
-  box-shadow: inset 0 0 0 2px var(--btn-bg), inset 0 0 0 3px var(--btn-filet);
+  box-shadow: var(--btn-shadow);
   font-family: var(--font-body);
   font-size: var(--fs-md);
   font-weight: 650;
@@ -434,39 +541,41 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 }
 .btn:hover { color: var(--btn-fg); }
 @media (hover: hover) {
-  .btn:hover { --btn-bg: var(--paper-2); }
+  .btn:hover { --btn-bg: var(--carte-2); --btn-border: var(--or); }
 }
 .btn:active { transform: translateY(1px) scale(.985); }
 .btn .icon { width: 1.25em; height: 1.25em; }
 
-/* Principal : vert bouteille, filet laiton intérieur comme une poignée de porte */
+/* Principal : or massif, texte nuit (9,6:1), léger reflet de métal poli */
 .btn--primary {
-  --btn-bg: var(--green);
-  --btn-fg: var(--card);
-  --btn-border: var(--green);
-  --btn-filet: rgba(217, 190, 140, .55);
-  --focus-color: var(--oxblood);
+  --btn-bg: var(--or);
+  --btn-fg: var(--nuit);
+  --btn-border: var(--or);
+  --btn-sheen: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, .06));
+  --btn-shadow: inset 0 1px 0 rgba(255, 246, 220, .35), 0 10px 22px -12px rgba(0, 0, 0, .9);
+  font-weight: 700;
 }
-@media (hover: hover) { .btn--primary:hover { --btn-bg: var(--green-2); --btn-border: var(--green-2); } }
-.btn--primary:active { --btn-bg: var(--green-3); }
+@media (hover: hover) { .btn--primary:hover { --btn-bg: var(--or-clair); --btn-border: var(--or-clair); } }
+.btn--primary:active { --btn-bg: var(--or-fonce); --btn-border: var(--or-fonce); }
 
-/* Accent : sang-de-bœuf de l'enseigne */
+/* Accent : bleu roi, texte ivoire (6,3:1) — action secondaire marquée */
 .btn--accent {
-  --btn-bg: var(--oxblood);
-  --btn-fg: var(--card);
-  --btn-border: var(--oxblood);
-  --btn-filet: rgba(217, 190, 140, .55);
-  --focus-color: var(--green);
+  --btn-bg: var(--roi);
+  --btn-fg: var(--ivoire);
+  --btn-border: var(--roi-2);
+  --btn-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 10px 22px -12px rgba(0, 0, 0, .9);
 }
-@media (hover: hover) { .btn--accent:hover { --btn-bg: var(--oxblood-2); --btn-border: var(--oxblood-2); } }
+@media (hover: hover) {
+  .btn--accent:hover { --btn-bg: var(--roi); --btn-border: var(--or-clair); --btn-sheen: linear-gradient(rgba(255, 255, 255, .07), rgba(255, 255, 255, .07)); }
+}
 
-/* Discret : sans fond ni bordure */
-.btn--ghost { --btn-bg: transparent; --btn-fg: var(--green); --btn-border: transparent; }
-@media (hover: hover) { .btn--ghost:hover { --btn-bg: rgba(35, 65, 58, .08); } }
+/* Discret : sans fond ni bordure, texte or */
+.btn--ghost { --btn-bg: transparent; --btn-fg: var(--or-clair); --btn-border: transparent; }
+@media (hover: hover) { .btn--ghost:hover { --btn-bg: var(--or-bg); --btn-border: transparent; } }
 
 /* Danger : action destructrice (annuler un RDV, supprimer) */
-.btn--danger { --btn-bg: var(--danger-bg); --btn-fg: var(--oxblood-2); --btn-border: rgba(155, 52, 38, .4); }
-@media (hover: hover) { .btn--danger:hover { --btn-bg: var(--oxblood); --btn-fg: var(--card); --btn-border: var(--oxblood); } }
+.btn--danger { --btn-bg: var(--danger-bg); --btn-fg: var(--danger); --btn-border: rgba(232, 112, 95, .55); }
+@media (hover: hover) { .btn--danger:hover { --btn-bg: var(--danger); --btn-fg: var(--nuit); --btn-border: var(--danger); } }
 
 .btn--block { display: flex; width: 100%; }
 .btn--lg { min-height: 56px; padding: 0 1.75rem; font-size: 1.0625rem; }
@@ -485,11 +594,11 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
    Le libellé reste lu par les lecteurs d'écran (aria-busy). */
 .btn[aria-busy="true"] {
   color: transparent !important;
-  border-color: var(--green);
-  background-color: var(--card);
+  border-color: var(--or);
+  background-color: var(--nuit);
   background-image: var(--pole-tile);
   background-size: 56px 56px;
-  box-shadow: inset 0 0 0 1px rgba(28, 41, 37, .2), inset 0 6px 8px -6px rgba(255, 255, 255, .7), inset 0 -6px 8px -6px rgba(0, 0, 0, .25);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45), inset 0 7px 9px -6px rgba(255, 246, 220, .4), inset 0 -7px 9px -6px rgba(0, 0, 0, .6);
   animation: pole-turn-56 1.1s linear infinite;
   pointer-events: none;
   cursor: progress;
@@ -499,7 +608,7 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 
 /* --------------------------------------------------------------------------
    .icon-btn — bouton rond 48 px contenant un pictogramme (aria-label requis)
-   Variantes : --solid (carte), --primary (vert), --sm (40 px)
+   Variantes : --solid (carte, picto or), --primary (or), --sm (40 px)
    <button class="icon-btn" aria-label="Fermer">{icon('croix')}</button>
    -------------------------------------------------------------------------- */
 .icon-btn {
@@ -515,22 +624,23 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   color: inherit;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color .15s, transform .12s var(--ease-out);
+  transition: background-color .15s, color .15s, transform .12s var(--ease-out);
 }
 .icon-btn .icon { width: 24px; height: 24px; }
-@media (hover: hover) { .icon-btn:hover { background: rgba(28, 41, 37, .07); } }
+@media (hover: hover) { .icon-btn:hover { background: rgba(242, 234, 216, .08); } }
 .icon-btn:active { transform: scale(.94); }
 .icon-btn:disabled { opacity: .4; pointer-events: none; }
-.icon-btn--solid { background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: var(--green); }
-.icon-btn--primary { background: var(--green); color: var(--card); }
-@media (hover: hover) { .icon-btn--primary:hover { background: var(--green-2); } }
+.icon-btn--solid { background: var(--carte); border: 1px solid var(--filet-fort); box-shadow: var(--shadow-1); color: var(--or-clair); }
+@media (hover: hover) { .icon-btn--solid:hover { background: var(--carte-2); } }
+.icon-btn--primary { background: var(--or); color: var(--nuit); box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .9); }
+@media (hover: hover) { .icon-btn--primary:hover { background: var(--or-clair); } }
 .icon-btn--sm { width: 40px; height: 40px; }
 .icon-btn--sm::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; }
 
 
 /* --------------------------------------------------------------------------
    .chip — pastille de filtre / choix (bouton bascule)
-   État choisi : [aria-pressed=true] (ou [aria-selected=true], .is-active)
+   État choisi : [aria-pressed=true] (ou [aria-selected=true], .is-active) → or
    Rangée défilante : .chips
    <button class="chip" aria-pressed="true">Barbe <span class="chip__count">3</span></button>
    -------------------------------------------------------------------------- */
@@ -549,10 +659,10 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   flex: none;
   min-height: 44px;
   padding: 0 1rem;
-  border: 1.5px solid var(--line-2);
+  border: 1.5px solid var(--filet-fort);
   border-radius: var(--r-pill);
-  background: var(--card);
-  color: var(--ink);
+  background: var(--carte);
+  color: var(--ivoire);
   font-size: .9375rem;
   font-weight: 550;
   line-height: 1.2;
@@ -562,20 +672,21 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   transition: background-color .15s, border-color .15s, color .15s;
 }
 .chip .icon { width: 18px; height: 18px; }
-@media (hover: hover) { .chip:hover { border-color: var(--green); } }
+@media (hover: hover) { .chip:hover { border-color: var(--or); } }
 .chip[aria-pressed="true"],
 .chip[aria-selected="true"],
 .chip.is-active {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--card);
+  background: var(--or);
+  border-color: var(--or);
+  color: var(--nuit);
+  font-weight: 650;
 }
 .chip__count {
   min-width: 1.5em;
   padding: 0 .4em;
   border-radius: var(--r-pill);
-  background: var(--paper-2);
-  color: var(--ink-2);
+  background: rgba(242, 234, 216, .1);
+  color: var(--ivoire-2);
   font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.5;
@@ -584,52 +695,52 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 }
 .chip[aria-pressed="true"] .chip__count,
 .chip[aria-selected="true"] .chip__count,
-.chip.is-active .chip__count { background: rgba(255, 252, 247, .18); color: var(--card); }
+.chip.is-active .chip__count { background: rgba(7, 11, 24, .16); color: var(--nuit); }
 
 
 /* --------------------------------------------------------------------------
-   .card — surface blanche cassée, coins 14 px, ombre chaude
-   Variantes : --flat (bordure sans ombre), --inset (bande crème), --accent
-   (filet sang-de-bœuf à gauche), --interactive (<a>/<button> cliquable)
+   .card — surface bleu nuit, coins 14 px, liseré d'or 1 px, ombre noire
+   Variantes : --flat (bordure sans ombre), --inset (bande plus sombre),
+   --accent (filet d'or à gauche), --interactive (<a>/<button> cliquable)
    Éléments  : __header, __title, __meta, __body, __footer
    -------------------------------------------------------------------------- */
 .card {
   position: relative;
   display: block;
   padding: var(--s-4) var(--s-5);
-  border: 1px solid rgba(28, 41, 37, .06);
+  border: 1px solid var(--filet);
   border-radius: var(--r-card);
-  background: var(--card);
+  background: var(--verre);
   box-shadow: var(--shadow-1);
   color: inherit;
 }
-.card--flat { box-shadow: none; border-color: var(--line); }
-.card--inset { box-shadow: none; border-color: transparent; background: var(--paper-2); }
-.card--accent { box-shadow: inset 4px 0 0 var(--oxblood), var(--shadow-1); }
+.card--flat { box-shadow: none; }
+.card--inset { box-shadow: none; border-color: rgba(242, 234, 216, .06); background: rgba(9, 15, 38, .84); }
+.card--accent { box-shadow: inset 3px 0 0 var(--or), var(--shadow-1); }
 .card--interactive {
   width: 100%;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: box-shadow .2s, transform .15s var(--ease-out);
+  transition: background-color .15s, border-color .15s, box-shadow .2s, transform .15s var(--ease-out);
 }
-@media (hover: hover) { .card--interactive:hover { box-shadow: var(--shadow-2); } }
+@media (hover: hover) { .card--interactive:hover { background: var(--carte-2); border-color: var(--filet-fort); box-shadow: var(--shadow-2); } }
 .card--interactive:active { transform: scale(.99); }
 .card__header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.card__title { font-family: var(--font-display); font-weight: 400; font-size: 1.1875rem; line-height: 1.2; }
-.card__meta { color: var(--ink-2); font-size: var(--fs-sm); }
+.card__title { font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; line-height: 1.25; letter-spacing: .02em; }
+.card__meta { color: var(--ivoire-2); font-size: var(--fs-sm); }
 .card__body { margin-top: var(--s-3); }
 .card__footer {
   display: flex; flex-wrap: wrap; gap: var(--s-2);
   margin-top: var(--s-4); padding-top: var(--s-3);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--filet);
 }
 
 
 /* --------------------------------------------------------------------------
-   .badge — statut en petites capitales
-   --online (réservé en ligne), --done (honoré), --noshow (lapin),
-   --cancelled (annulé), --new (nouveau), sans variante : neutre (confirmé)
+   .badge — statut en petites capitales, lisible sur fond sombre
+   --online (réservé en ligne : bleu roi), --done (honoré), --noshow (lapin),
+   --cancelled (annulé), --new (nouveau : or), sans variante : neutre (confirmé)
    <span class="badge badge--done">Honoré</span>
    -------------------------------------------------------------------------- */
 .badge {
@@ -638,8 +749,9 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   gap: .4em;
   padding: .3em .7em;
   border-radius: var(--r-pill);
-  background: var(--paper-2);
-  color: var(--ink-2);
+  background: var(--carte-2);
+  color: var(--ivoire);
+  box-shadow: inset 0 0 0 1px var(--filet);
   font-size: .6875rem;
   font-weight: 700;
   line-height: 1.2;
@@ -648,27 +760,27 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   white-space: nowrap;
   vertical-align: middle;
 }
-.badge--online { background: var(--brass-bg); color: #6E5220; }
-.badge--done { background: var(--ok-bg); color: var(--ok); }
-.badge--noshow { background: var(--warn-bg); color: var(--warn); }
+.badge--online { background: var(--roi); color: var(--ivoire); box-shadow: inset 0 0 0 1px var(--roi-2); }
+.badge--done { background: var(--ok-bg); color: var(--ok); box-shadow: inset 0 0 0 1px rgba(92, 194, 138, .35); }
+.badge--noshow { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 1px rgba(233, 180, 76, .38); }
 .badge--cancelled {
   background: transparent;
-  color: var(--ink-2);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--ivoire-2);
+  box-shadow: inset 0 0 0 1px var(--filet-fort);
   text-decoration: line-through;
 }
-.badge--new { background: var(--oxblood); color: var(--card); }
+.badge--new { background: var(--or); color: var(--nuit); box-shadow: none; }
 .badge--new::before {
   content: "";
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--card);
+  background: var(--nuit);
   animation: pulse-dot 1.6s ease-in-out infinite;
 }
 
 
 /* --------------------------------------------------------------------------
-   .field — champ de formulaire étiqueté
+   .field — champ de formulaire étiqueté (fond --carte, bord doré, focus or)
    <div class="field">
      <label class="field__label" for="tel">Téléphone</label>
      <input class="field__input" id="tel" type="tel" autocomplete="tel"
@@ -684,24 +796,26 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 .field > label {
   font-size: .9375rem;
   font-weight: 650;
-  color: var(--ink);
+  color: var(--ivoire);
   line-height: 1.3;
 }
-.field__optional { font-weight: 400; color: var(--ink-2); font-size: var(--fs-sm); }
+.field__optional { font-weight: 400; color: var(--ivoire-2); font-size: var(--fs-sm); }
 
+/* :where() garde ce socle à la spécificité d'une classe : les états (survol,
+   focus, [aria-invalid], :disabled), le select et la zone de texte l'emportent. */
 .field__input,
 .field__select,
 .field__textarea,
-.field :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+.field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
   display: block;
   width: 100%;
   min-height: 52px;
   padding: 13px 14px;
-  border: 1.5px solid var(--line-2);
+  border: 1.5px solid var(--filet-fort);
   border-radius: 12px;
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: inset 0 1px 2px rgba(60, 40, 20, .06);
+  background-color: var(--carte);
+  color: var(--ivoire);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .35);
   font-size: max(16px, 1rem);
   line-height: 1.3;
   -webkit-appearance: none;
@@ -713,32 +827,35 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 .field__select,
 .field select {
   padding-right: 44px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355625D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EBCF8C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   background-size: 20px 20px;
 }
-.field ::placeholder { color: #8A928E; opacity: 1; }
-.field :is(input, select, textarea):hover { border-color: rgba(28, 41, 37, .4); }
+.field select option { background: var(--carte); color: var(--ivoire); }
+.field ::placeholder,
+:is(.field__input, .field__textarea)::placeholder { color: #8D96B3; opacity: 1; }   /* 5,7:1 sur --carte */
+.field :is(input, select, textarea):hover,
+:is(.field__input, .field__select, .field__textarea):hover { border-color: rgba(214, 177, 94, .8); }
 .field :is(input, select, textarea):focus,
 .field__input:focus, .field__select:focus, .field__textarea:focus {
   outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 4px rgba(35, 65, 58, .2);
+  border-color: var(--or);
+  box-shadow: 0 0 0 3px rgba(214, 177, 94, .5);
 }
 .field :is(input, select, textarea)[aria-invalid="true"] {
-  border-color: var(--oxblood);
-  background-color: #FBF1EE;
+  border-color: var(--danger);
+  background-color: #22223F;          /* --carte teintée de corail */
 }
-.field :is(input, select, textarea)[aria-invalid="true"]:focus { box-shadow: 0 0 0 4px rgba(155, 52, 38, .18); }
-.field :is(input, select, textarea):disabled { background: var(--paper-2); color: var(--ink-2); }
+.field :is(input, select, textarea)[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(232, 112, 95, .45); }
+.field :is(input, select, textarea):disabled { background-color: var(--nuit-2); color: var(--ivoire-2); border-style: dashed; }
 .field input:is([type="date"], [type="time"], [type="datetime-local"]) { min-height: 52px; }
-.field__hint { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.4; }
+.field__hint { font-size: var(--fs-sm); color: var(--ivoire-2); line-height: 1.4; }
 .field__error {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  color: var(--oxblood);
+  color: var(--danger);
   font-size: var(--fs-sm);
   font-weight: 650;
   line-height: 1.35;
@@ -749,8 +866,8 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   display: grid; place-items: center;
   width: 18px; height: 18px; margin-top: 1px;
   border-radius: 50%;
-  background: var(--oxblood);
-  color: var(--card);
+  background: var(--danger);
+  color: var(--nuit);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -793,31 +910,33 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   place-items: center;
   width: 24px; height: 24px;
   margin-top: -1px;
-  border: 2px solid var(--ink-2);
+  border: 2px solid var(--ivoire-2);
   border-radius: 7px;
-  background: var(--card);
+  background: var(--carte);
   transition: background-color .15s, border-color .15s;
 }
 .check__box::after {
   content: "";
   width: 12px; height: 7px;
   margin-top: -3px;
-  border-left: 2.5px solid var(--card);
-  border-bottom: 2.5px solid var(--card);
+  border-left: 2.5px solid var(--nuit);
+  border-bottom: 2.5px solid var(--nuit);
   transform: rotate(-45deg) scale(0);
   transition: transform .18s var(--ease-out);
 }
-.check__input:checked + .check__box { background: var(--green); border-color: var(--green); }
+.check:hover .check__box { border-color: var(--or); }
+.check__input:checked + .check__box { background: var(--or); border-color: var(--or); }
 .check__input:checked + .check__box::after { transform: rotate(-45deg) scale(1); }
 .check__input:focus-visible + .check__box { outline: 3px solid var(--focus-color); outline-offset: 2px; }
 .check__input:disabled + .check__box { opacity: .45; }
-.check__input[aria-invalid="true"] + .check__box { border-color: var(--oxblood); }
+.check__input[aria-invalid="true"] + .check__box { border-color: var(--danger); }
 .check__label { min-width: 0; }
-.check__hint { display: block; color: var(--ink-2); font-size: var(--fs-sm); }
+.check__hint { display: block; color: var(--ivoire-2); font-size: var(--fs-sm); }
 
 
 /* --------------------------------------------------------------------------
    .switch — interrupteur (case à cocher role="switch"), libellé à gauche
+   Éteint : rail nuit cerclé de bronze ; allumé : rail or, bouton nuit.
    <label class="switch">
      <span class="switch__label">Réservation en ligne <span class="switch__hint">…</span></span>
      <input class="switch__input" type="checkbox" role="switch" checked>
@@ -835,7 +954,7 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   cursor: pointer;
 }
 .switch__label { min-width: 0; font-weight: 600; line-height: 1.35; }
-.switch__hint { display: block; font-weight: 400; color: var(--ink-2); font-size: var(--fs-sm); }
+.switch__hint { display: block; font-weight: 400; color: var(--ivoire-2); font-size: var(--fs-sm); }
 .switch__input {
   position: absolute;
   right: 0; top: 50%;
@@ -849,9 +968,9 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   flex: none;
   width: 52px; height: 32px;
   border-radius: var(--r-pill);
-  background: #D9D0C1;
-  box-shadow: inset 0 0 0 1.5px rgba(28, 41, 37, .3);
-  transition: background-color .2s;
+  background: var(--nuit);
+  box-shadow: inset 0 0 0 1.5px var(--filet-fort), inset 0 2px 4px rgba(0, 0, 0, .5);
+  transition: background-color .2s, box-shadow .2s;
 }
 .switch__track::after {
   content: "";
@@ -859,15 +978,15 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   top: 6px; left: 6px;
   width: 20px; height: 20px;
   border-radius: 50%;
-  background: var(--ink-2);
-  box-shadow: 0 1px 2px rgba(60, 40, 20, .2);
+  background: var(--ivoire-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
   transition: transform .22s var(--ease-out), background-color .2s, width .2s, height .2s, top .2s, left .2s;
 }
-.switch__input:checked + .switch__track { background: var(--green); box-shadow: none; }
+.switch__input:checked + .switch__track { background: var(--or); box-shadow: inset 0 1px 0 rgba(255, 246, 220, .35); }
 .switch__input:checked + .switch__track::after {
   top: 4px; left: 4px;
   width: 24px; height: 24px;
-  background: var(--card);
+  background: var(--nuit);
   transform: translateX(20px);
 }
 .switch__input:focus-visible + .switch__track { outline: 3px solid var(--focus-color); outline-offset: 2px; }
@@ -875,8 +994,8 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 
 
 /* --------------------------------------------------------------------------
-   .pole — barre de progression rayée qui tourne comme un poteau de barbier,
-   avec ses deux embouts en laiton. Valeur : --progress de 0 à 1.
+   .pole — barre de progression rayée or / nuit / roi qui tourne comme un
+   poteau de barbier, avec ses deux embouts dorés. Valeur : --progress de 0 à 1.
    <div class="pole" role="progressbar" aria-label="Étape 2 sur 3"
         aria-valuemin="0" aria-valuemax="3" aria-valuenow="2" style="--progress: .66">
      <span class="pole__bar"></span>
@@ -889,18 +1008,18 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   height: 12px;
   margin-inline: 7px;
   border-radius: var(--r-pill);
-  background: var(--paper-2);
-  box-shadow: inset 0 1px 2px rgba(60, 40, 20, .18), inset 0 0 0 1px var(--line);
+  background: var(--nuit);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6), inset 0 0 0 1px var(--filet);
 }
 .pole::before,
-.pole::after {                        /* embouts en laiton */
+.pole::after {                        /* embouts dorés */
   content: "";
   position: absolute;
   top: -4px;
   width: 9px; height: 20px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #8E6A32, var(--brass-2) 45%, var(--brass) 70%, #8E6A32);
-  box-shadow: 0 1px 2px rgba(60, 40, 20, .25);
+  background: linear-gradient(90deg, var(--or-fonce), var(--or-clair) 45%, var(--or) 70%, var(--or-fonce));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .55);
   z-index: 1;
 }
 .pole::before { left: -7px; }
@@ -911,9 +1030,9 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   max-width: 100%;
   height: 100%;
   border-radius: inherit;
-  background-color: var(--card);
+  background-color: var(--nuit);
   background-image:
-    linear-gradient(rgba(255, 255, 255, .35), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, .12)),
+    linear-gradient(rgba(255, 246, 220, .3), rgba(255, 246, 220, 0) 45%, rgba(0, 0, 0, .3)),
     var(--pole-tile);
   background-size: 100% 100%, 28px 28px;
   transition: width .5s var(--ease-out);
@@ -934,12 +1053,12 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   height: 38px;
   margin-block: 7px;
   border-radius: 3px;
-  background-color: var(--card);
+  background-color: var(--nuit);
   background-image:
-    linear-gradient(90deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 40%, rgba(0, 0, 0, .18)),
+    linear-gradient(90deg, rgba(255, 246, 220, .35), rgba(255, 246, 220, 0) 40%, rgba(0, 0, 0, .35)),
     var(--pole-tile);
   background-size: 100% 100%, 20px 20px;
-  box-shadow: inset 0 0 0 1px rgba(28, 41, 37, .2);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45);
   animation: pole-rise-20 .9s linear infinite;
   vertical-align: middle;
 }
@@ -950,7 +1069,7 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   left: -4px; right: -4px;
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #8E6A32, var(--brass-2) 45%, var(--brass) 70%, #8E6A32);
+  background: linear-gradient(90deg, var(--or-fonce), var(--or-clair) 45%, var(--or) 70%, var(--or-fonce));
 }
 .spinner::before { top: -6px; border-radius: 7px 7px 2px 2px; }
 .spinner::after { bottom: -6px; border-radius: 2px 2px 3px 3px; }
@@ -960,18 +1079,18 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-8) var(--s-4);
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .9375rem;
   text-align: center;
 }
 
 
 /* --------------------------------------------------------------------------
-   .pricelist — le tableau des tarifs de l'ardoise du barbier
-   nom … points de conduite … prix ; durée en petites capitales dessous ;
-   catégorie en intertitre. L'élément peut être un <button> (choix d'une
-   prestation) : état choisi [aria-pressed=true] / [aria-current=true].
-   --board : version « ardoise » vert bouteille encadrée de laiton.
+   .pricelist — le tableau des tarifs du salon
+   nom … points de conduite dorés … prix en Cinzel or ; durée en petites
+   capitales dessous ; catégorie en intertitre. L'élément peut être un <button>
+   (choix d'une prestation) : état choisi [aria-pressed=true] / [aria-current=true].
+   --board : version « écrin » encadrée d'un double filet d'or (lecture seule).
    <section class="pricelist">
      <h3 class="pricelist__category">Coupe</h3>
      <ul class="pricelist__items"><li>
@@ -987,25 +1106,37 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
      </li></ul>
    </section>
    -------------------------------------------------------------------------- */
-.pricelist { --dots: rgba(28, 41, 37, .42); display: block; }
+.pricelist { --dots: rgba(214, 177, 94, .6); display: block; }
 .pricelist__category {
   display: flex;
   align-items: center;
   gap: var(--s-3);
   margin: var(--s-6) 0 var(--s-1);
-  color: var(--oxblood);
-  font-family: var(--font-body);
-  font-size: .8125rem;
-  font-weight: 700;
+  color: var(--or-clair);
+  font-family: var(--font-display);
+  font-size: .875rem;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: .16em;
   text-transform: uppercase;
 }
-.pricelist__category::before { content: ""; width: 18px; height: 1px; background: var(--brass); }
-.pricelist__category::after { content: ""; flex: 1; height: 1px; background: var(--brass); opacity: .6; }
+.pricelist__category::before { content: ""; width: 18px; height: 1px; background: var(--or); }
+.pricelist__category::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--or), transparent); opacity: .7; }
 .pricelist > .pricelist__category:first-child { margin-top: 0; }
 .pricelist__items { list-style: none; margin: 0; padding: 0; }
-.pricelist__items > li + li { border-top: 1px dashed var(--line); }
+/* Sur le fond de marbre, chaque catégorie est posée sur un verre fumé : une veine
+   d'or ne traverse jamais un nom ni un prix (l'intertitre reste sur le marbre). */
+.pricelist:not(.pricelist--board) .pricelist__items {
+  margin-top: var(--s-2);
+  padding: 2px var(--s-1);
+  border: 1px solid var(--filet);
+  border-radius: var(--r-card);
+  background: var(--verre);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-1);
+}
+.pricelist__items > li + li { border-top: 1px dashed var(--filet); }
 .pricelist__item {
   position: relative;
   display: block;
@@ -1021,79 +1152,68 @@ button, a, label, summary, [role="button"] { touch-action: manipulation; }
 }
 button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 @media (hover: hover) {
-  button.pricelist__item:hover, a.pricelist__item:hover { background: rgba(255, 252, 247, .75); }
+  button.pricelist__item:hover, a.pricelist__item:hover { background: rgba(242, 234, 216, .045); }
 }
 .pricelist__row { display: flex; align-items: baseline; gap: var(--s-2); }
-.pricelist__name { font-size: 1.0625rem; font-weight: 650; line-height: 1.3; }
+.pricelist__name { font-size: 1.0625rem; font-weight: 600; line-height: 1.3; }
 .pricelist__dots {
   flex: 1 1 auto;
   min-width: 1.25rem;
   height: 4px;
-  background: radial-gradient(circle at 2px 2px, var(--dots) 1.15px, transparent 1.7px) left bottom / 7px 4px repeat-x;
+  background: radial-gradient(circle at 2px 2px, var(--dots) 1.1px, transparent 1.6px) left bottom / 7px 4px repeat-x;
 }
 .pricelist__price {
   flex: none;
-  color: var(--green);
+  color: var(--or-clair);
   font-family: var(--font-display);
   font-size: 1.25rem;
+  font-weight: 700;
   line-height: 1.1;
+  letter-spacing: .02em;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
 }
 .pricelist__duration {
   display: block;
   margin-top: 3px;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-xs);
   font-weight: 650;
-  letter-spacing: .08em;
+  letter-spacing: .12em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
-.pricelist__desc { display: block; margin-top: 2px; max-width: 42ch; color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.4; }
+.pricelist__desc { display: block; margin-top: 2px; max-width: 42ch; color: var(--ivoire-2); font-size: var(--fs-sm); line-height: 1.4; }
 .pricelist__item[aria-pressed="true"],
 .pricelist__item[aria-current="true"],
 .pricelist__item.is-selected {
-  background: var(--card);
-  box-shadow: inset 4px 0 0 var(--oxblood), var(--shadow-1);
+  background: var(--carte-2);
+  box-shadow: inset 3px 0 0 var(--or), inset 0 0 0 1px var(--filet-fort), var(--shadow-1);
 }
 .pricelist__item[aria-pressed="true"] .pricelist__name,
 .pricelist__item[aria-current="true"] .pricelist__name,
-.pricelist__item.is-selected .pricelist__name { color: var(--oxblood-2); }
-.pricelist__item[aria-pressed="true"] .pricelist__price,
-.pricelist__item[aria-current="true"] .pricelist__price,
-.pricelist__item.is-selected .pricelist__price { color: var(--oxblood); }
+.pricelist__item.is-selected .pricelist__name { color: var(--or-clair); }
 
-/* Ardoise vert bouteille, double filet laiton */
+/* Écrin : carte encadrée d'un double filet d'or */
 .pricelist--board {
-  --dots: rgba(217, 190, 140, .6);
-  --focus-color: var(--brass-2);
   padding: var(--s-5) var(--s-3);
+  border: 1px solid var(--filet-fort);
   border-radius: var(--r-card);
-  background: var(--green);
-  color: var(--card);
-  box-shadow: inset 0 0 0 5px var(--green), inset 0 0 0 6px rgba(217, 190, 140, .7), var(--shadow-2);
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(35, 71, 197, .16), transparent 65%),
+    var(--carte);
+  box-shadow: inset 0 0 0 5px var(--carte), inset 0 0 0 6px var(--filet), var(--shadow-2);
 }
-.pricelist--board .pricelist__category { color: var(--brass-2); margin-inline: var(--s-3); }
-.pricelist--board .pricelist__category::before,
-.pricelist--board .pricelist__category::after { background: var(--brass-2); }
-.pricelist--board .pricelist__items > li + li { border-top-color: rgba(255, 252, 247, .14); }
-.pricelist--board .pricelist__price { color: var(--brass-2); }
-.pricelist--board .pricelist__duration,
-.pricelist--board .pricelist__desc { color: rgba(255, 252, 247, .74); }
+.pricelist--board .pricelist__category { margin-inline: var(--s-3); }
+.pricelist--board .pricelist__items > li + li { border-top-color: rgba(242, 234, 216, .08); }
 @media (hover: hover) {
-  .pricelist--board button.pricelist__item:hover { background: rgba(255, 252, 247, .07); }
+  .pricelist--board button.pricelist__item:hover { background: rgba(242, 234, 216, .05); }
 }
-.pricelist--board .pricelist__item[aria-pressed="true"],
-.pricelist--board .pricelist__item[aria-current="true"],
-.pricelist--board .pricelist__item.is-selected { background: var(--green-3); box-shadow: inset 4px 0 0 var(--brass-2); }
-.pricelist--board .pricelist__item[aria-pressed="true"] :is(.pricelist__name, .pricelist__price),
-.pricelist--board .pricelist__item.is-selected :is(.pricelist__name, .pricelist__price) { color: var(--card); }
 
 
 /* --------------------------------------------------------------------------
    .daystrip — bande de jours défilable horizontalement (scroll-snap)
-   Jour choisi : [aria-pressed=true] (ou [aria-selected=true] dans un listbox)
+   Jour choisi : [aria-pressed=true] (ou [aria-selected=true] dans un listbox) → or
    Jour fermé / complet : --closed / --full (pointillés, chiffre barré ; pâlis
    seulement s'ils sont [disabled])
    Aujourd'hui : --today
@@ -1109,7 +1229,7 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   display: flex;
   gap: var(--s-2);
   margin-inline: calc(-1 * var(--gutter));
-  padding: 6px var(--gutter) 12px;
+  padding: 6px var(--gutter) 14px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
@@ -1130,18 +1250,18 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   width: 62px;
   min-height: 86px;
   padding: 8px 0 10px;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--filet);
   border-radius: 16px;
-  background: var(--card);
-  color: var(--ink);
+  background: var(--carte);
+  color: var(--ivoire);
   scroll-snap-align: start;
   cursor: pointer;
   transition: background-color .15s, border-color .15s, color .15s, transform .15s var(--ease-out);
 }
-@media (hover: hover) { .daystrip__day:hover { border-color: var(--green); } }
+@media (hover: hover) { .daystrip__day:hover { border-color: var(--or); } }
 .daystrip__dow,
 .daystrip__month {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .6875rem;
   font-weight: 700;
   line-height: 1.1;
@@ -1151,19 +1271,22 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 .daystrip__num {
   font-family: var(--font-display);
   font-size: 1.5rem;
+  font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums lining-nums;
 }
-.daystrip__day--today .daystrip__dow { color: var(--oxblood); }
+.daystrip__day--today { border-color: var(--filet-fort); }
+.daystrip__day--today .daystrip__dow { color: var(--or-clair); }
 .daystrip__day[aria-pressed="true"],
 .daystrip__day[aria-selected="true"] {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--card);
-  box-shadow: 0 8px 18px -6px rgba(35, 65, 58, .55);
+  background: var(--or);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0) 60%);
+  border-color: var(--or);
+  color: var(--nuit);
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, .9);
 }
 .daystrip__day[aria-pressed="true"] :is(.daystrip__dow, .daystrip__month),
-.daystrip__day[aria-selected="true"] :is(.daystrip__dow, .daystrip__month) { color: var(--brass-2); }
+.daystrip__day[aria-selected="true"] :is(.daystrip__dow, .daystrip__month) { color: var(--carte); }
 .daystrip__day[aria-pressed="true"]::after,
 .daystrip__day[aria-selected="true"]::after {
   content: "";
@@ -1171,20 +1294,20 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   bottom: 5px;
   width: 16px; height: 3px;
   border-radius: 2px;
-  background: var(--brass-2);
+  background: var(--nuit);
 }
 .daystrip__day--closed,
 .daystrip__day--full,
 .daystrip__day:disabled {
   border-style: dashed;
-  border-color: var(--line-2);
+  border-color: var(--filet-fort);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   cursor: default;
   box-shadow: none;
 }
 /* Pâli seulement s'il est vraiment inactif : un jour complet (client) ou fermé
-   (pro) reste un bouton, son texte garde le contraste AA (--ink-2 : 5,5:1). */
+   (pro) reste un bouton, son texte garde le contraste AA (--ivoire-2 : 10,9:1). */
 .daystrip__day:disabled { opacity: .62; }
 .daystrip__day--closed .daystrip__num,
 .daystrip__day--full .daystrip__num { text-decoration: line-through; text-decoration-thickness: 1.5px; }
@@ -1203,11 +1326,11 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
    -------------------------------------------------------------------------- */
 .slots__title {
   margin: var(--s-5) 0 var(--s-2);
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-family: var(--font-body);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
 .slots > .slots__title:first-child { margin-top: 0; }
@@ -1219,36 +1342,37 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 .slots__slot {
   min-height: var(--tap);
   padding: 0 .5rem;
-  border: 1.5px solid var(--line-2);
+  border: 1.5px solid var(--filet-fort);
   border-radius: var(--r-pill);
-  background: var(--card);
-  color: var(--green);
+  background: var(--carte);
+  color: var(--ivoire);
   font-size: 1.0625rem;
   font-weight: 650;
   line-height: 1;
   font-variant-numeric: tabular-nums lining-nums;
   cursor: pointer;
-  transition: border-color .15s, transform .15s var(--ease-out), box-shadow .15s;
+  transition: border-color .15s, color .15s, transform .15s var(--ease-out), box-shadow .15s;
 }
-@media (hover: hover) { .slots__slot:hover { border-color: var(--green); } }
+@media (hover: hover) { .slots__slot:hover { border-color: var(--or); color: var(--or-clair); } }
 .slots__slot:active { transform: scale(.96); }
 .slots__slot[aria-pressed="true"],
 .slots__slot.is-selected {
   border: 4px solid transparent;
   background:
-    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(var(--carte-2), var(--carte-2)) padding-box,
     var(--pole-tile) border-box;
   background-size: auto, 28px 28px;
-  color: var(--oxblood);
+  color: var(--or-clair);
   font-weight: 750;
-  box-shadow: 0 6px 14px -6px rgba(155, 52, 38, .55);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .9);
   transform: scale(1.04);
   animation: slot-turn 1.6s linear infinite;
 }
 .slots__slot:disabled {
   border-style: dashed;
+  border-color: var(--filet);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   opacity: .55;
   text-decoration: line-through;
   cursor: default;
@@ -1256,7 +1380,8 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 
 
 /* --------------------------------------------------------------------------
-   .ticket — confirmation de RDV : ticket à bord perforé + « tampon »
+   .ticket — confirmation de RDV : carte noire à liseré d'or, bord perforé,
+   haut habillé de marbre (sous voile), « tampon » doré.
    <article class="ticket">
      <div class="ticket__main">
        <p class="ticket__kicker">Rendez-vous confirmé</p>
@@ -1272,20 +1397,32 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
    -------------------------------------------------------------------------- */
 .ticket {
   --notch: 13px;
-  --ticket-bg: var(--card);
+  --ticket-bg: #04060D;                  /* carte noire */
+  --ticket-line: rgba(214, 177, 94, .8); /* liseré d'or qui suit les perforations */
   position: relative;
   margin-bottom: 8px;                    /* place pour la dentelure du bas */
-  filter: drop-shadow(0 1px 1.5px rgba(60, 40, 20, .1)) drop-shadow(0 10px 22px rgba(60, 40, 20, .1));
+  color: var(--ivoire);
+  filter:
+    drop-shadow(1px 0 0 var(--ticket-line)) drop-shadow(-1px 0 0 var(--ticket-line))
+    drop-shadow(0 1px 0 var(--ticket-line)) drop-shadow(0 -1px 0 var(--ticket-line))
+    drop-shadow(0 18px 26px rgba(0, 0, 0, .6));
 }
 .ticket__main,
 .ticket__stub {
   position: relative;
   padding: var(--s-5) var(--s-5);
-  background: var(--ticket-bg);
+  background-color: var(--ticket-bg);
 }
 .ticket__main {
   padding-top: var(--s-6);
   border-radius: var(--r-card) var(--r-card) 0 0;
+  /* Haut en marbre, voilé, qui se fond dans le noir du ticket */
+  background-image:
+    linear-gradient(180deg, rgb(4 6 13 / .66) 0, rgb(4 6 13 / .84) 72px, var(--ticket-bg) 168px),
+    url('../img/marbre.webp');
+  background-size: 100% 100%, cover;
+  background-position: 0 0, center top;
+  background-repeat: no-repeat;
   /* Le tampon entre agrandi (stamp-in, scale 1.9) : sans ceci il élargit la page
      le temps de l'animation. Le masque le rogne déjà : rien ne change à l'œil. */
   overflow: hidden;
@@ -1296,13 +1433,12 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
     radial-gradient(circle var(--notch) at 0 100%, #0000 97%, #000) left / 51% 100% no-repeat,
     radial-gradient(circle var(--notch) at 100% 100%, #0000 97%, #000) right / 51% 100% no-repeat;
 }
-.ticket__main::before {                  /* liseré vert en haut du ticket */
+.ticket__main::before {                  /* reflet d'or au sommet du ticket */
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 6px;
-  background: var(--green);
-  box-shadow: 0 2px 0 var(--brass-2);
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--or-fonce) 12%, var(--or-clair) 50%, var(--or-fonce) 88%, transparent);
 }
 .ticket__stub {
   -webkit-mask:
@@ -1312,14 +1448,14 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
     radial-gradient(circle var(--notch) at 0 0, #0000 97%, #000) left / 51% 100% no-repeat,
     radial-gradient(circle var(--notch) at 100% 0, #0000 97%, #000) right / 51% 100% no-repeat;
 }
-.ticket__stub::before {                  /* pointillés de la perforation */
+.ticket__stub::before {                  /* pointillés dorés de la perforation */
   content: "";
   position: absolute;
   top: -1px;
   left: calc(var(--notch) + 6px);
   right: calc(var(--notch) + 6px);
   height: 2px;
-  background: linear-gradient(90deg, var(--line-2) 0 6px, transparent 6px) 0 0 / 11px 2px repeat-x;
+  background: linear-gradient(90deg, var(--filet-fort) 0 6px, transparent 6px) 0 0 / 11px 2px repeat-x;
 }
 .ticket::after {                         /* dentelure du bas */
   content: "";
@@ -1332,18 +1468,20 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   mask: radial-gradient(circle 4.5px at 7px 100%, #0000 94%, #000) 0 0 / 14px 8px repeat-x;
 }
 .ticket__kicker {
-  color: var(--ok);
+  color: var(--or-clair);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .14em;
   text-transform: uppercase;
 }
 .ticket__title {
   margin-top: var(--s-2);
-  padding-right: 92px;                  /* place pour le tampon */
+  padding-right: 112px;                 /* place pour le tampon */
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
+  font-size: clamp(1.5rem, 7vw, var(--fs-2xl));
+  font-weight: 600;
   line-height: 1.1;
+  letter-spacing: .02em;
 }
 .ticket__when {
   margin-top: var(--s-2);
@@ -1359,10 +1497,10 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   margin-top: var(--s-4);
 }
 .ticket__details dt {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .6875rem;
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
   text-transform: uppercase;
 }
 .ticket__details dd {
@@ -1371,31 +1509,31 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 .ticket__ref {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-xs);
   letter-spacing: .12em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
-.ticket__stamp {
+.ticket__stamp {                          /* tampon doré, encre irrégulière */
   position: absolute;
   top: 30px;
   right: 16px;
-  padding: 7px 11px 6px;
-  border: 3px double var(--oxblood);
+  padding: 6px 9px 5px;
+  border: 3px double var(--or);
   border-radius: 8px;
-  color: var(--oxblood);
+  color: var(--or-clair);
   font-family: var(--font-display);
-  font-size: .9375rem;
+  font-size: .75rem;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: .1em;
   text-transform: uppercase;
-  opacity: .82;
+  text-shadow: 0 0 10px rgba(214, 177, 94, .25);
+  opacity: .92;
   transform: rotate(-12deg);
-  mix-blend-mode: multiply;
-  /* encre irrégulière */
-  -webkit-mask-image: repeating-radial-gradient(circle at 30% 35%, #000 0 2px, rgba(0, 0, 0, .78) 2.5px 3.2px, #000 3.6px 5px);
-  mask-image: repeating-radial-gradient(circle at 30% 35%, #000 0 2px, rgba(0, 0, 0, .78) 2.5px 3.2px, #000 3.6px 5px);
+  -webkit-mask-image: repeating-radial-gradient(circle at 30% 35%, #000 0 2px, rgba(0, 0, 0, .74) 2.5px 3.2px, #000 3.6px 5px);
+  mask-image: repeating-radial-gradient(circle at 30% 35%, #000 0 2px, rgba(0, 0, 0, .74) 2.5px 3.2px, #000 3.6px 5px);
   animation: stamp-in .55s var(--ease-out) .3s both;
   pointer-events: none;
 }
@@ -1426,7 +1564,7 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 .sheet__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(20, 30, 27, .5);
+  background: rgba(2, 4, 10, .72);
   animation: fade-in .22s ease-out both;
 }
 .sheet__panel {
@@ -1438,9 +1576,12 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   max-height: 90vh;
   max-height: 90dvh;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  border: 1px solid var(--filet);
+  border-bottom: 0;
   border-radius: var(--r-lg) var(--r-lg) 0 0;
-  background: var(--card);
-  box-shadow: var(--shadow-3);
+  background: var(--nuit-2);
+  color: var(--ivoire);
+  box-shadow: inset 0 1px 0 rgba(235, 207, 140, .18), var(--shadow-3);
   animation: sheet-up .34s var(--ease-out) both;
 }
 .sheet__panel:focus { outline: none; }
@@ -1449,7 +1590,7 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   width: 42px; height: 5px;
   margin: 8px auto 0;
   border-radius: var(--r-pill);
-  background: var(--line-2);
+  background: var(--filet-fort);
 }
 .sheet__header {
   flex: none;
@@ -1463,7 +1604,9 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   min-width: 0;
   font-family: var(--font-display);
   font-size: var(--fs-xl);
+  font-weight: 600;
   line-height: 1.2;
+  letter-spacing: .02em;
 }
 .sheet__title:empty { visibility: hidden; }
 .sheet__body {
@@ -1474,14 +1617,14 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
-.sheet__message { color: var(--ink-2); font-size: 1.0625rem; line-height: 1.5; }
+.sheet__message { color: var(--ivoire-2); font-size: 1.0625rem; line-height: 1.5; }
 .sheet__actions {
   flex: none;
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
   padding: var(--s-3) var(--s-5) var(--s-4);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--filet);
 }
 .sheet__actions > .btn { flex: 1 1 140px; }
 .sheet.is-closing .sheet__panel { animation: sheet-down .22s var(--ease-in) both; }
@@ -1489,7 +1632,7 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 .sheet.is-closing { pointer-events: none; }
 @media (min-width: 640px) {
   .sheet { align-items: center; padding: var(--s-6); }
-  .sheet__panel { border-radius: var(--r-lg); max-height: 86vh; animation-name: sheet-pop; }
+  .sheet__panel { border-bottom: 1px solid var(--filet); border-radius: var(--r-lg); max-height: 86vh; animation-name: sheet-pop; }
   .sheet.is-closing .sheet__panel { animation-name: sheet-unpop; }
   .sheet__handle { visibility: hidden; height: 0; margin-top: var(--s-2); }
 }
@@ -1513,7 +1656,6 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   pointer-events: none;
 }
 .toast {
-  --focus-color: var(--brass-2);
   pointer-events: auto;
   display: flex;
   align-items: center;
@@ -1522,10 +1664,11 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   max-width: 528px;
   min-height: 52px;
   padding: 8px 8px 8px 16px;
+  border: 1px solid var(--filet-fort);
   border-radius: var(--r-card);
-  background: var(--green-3);
-  color: var(--card);
-  box-shadow: 0 12px 32px rgba(28, 20, 10, .28), 0 2px 6px rgba(28, 20, 10, .16);
+  background: var(--carte-2);
+  color: var(--ivoire);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4);
   animation: toast-in .3s var(--ease-out) both;
 }
 .toast::before {
@@ -1533,26 +1676,26 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   flex: none;
   width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--brass-2);
+  background: var(--or);
 }
-.toast--success::before { background: #8FCB9B; }
-.toast--error { background: #5E1D14; }
-.toast--error::before { background: #F29A86; }
+.toast--success::before { background: var(--ok); }
+.toast--error { border-color: rgba(232, 112, 95, .6); }
+.toast--error::before { background: var(--danger); }
 .toast__msg { flex: 1; min-width: 0; padding-block: 6px; font-size: .9375rem; font-weight: 550; line-height: 1.35; }
 .toast__action {
   flex: none;
   min-height: 40px;
   padding: 0 14px;
   border-radius: var(--r-pill);
-  background: rgba(255, 252, 247, .1);
-  color: var(--brass-2);
+  background: var(--or-bg);
+  color: var(--or-clair);
   font-size: .9375rem;
   font-weight: 750;
   white-space: nowrap;
   cursor: pointer;
 }
-@media (hover: hover) { .toast__action:hover { background: rgba(255, 252, 247, .18); } }
-.toast__close { color: rgba(255, 252, 247, .8); width: 40px; height: 40px; }
+@media (hover: hover) { .toast__action:hover { background: rgba(214, 177, 94, .22); } }
+.toast__close { color: var(--ivoire-2); width: 40px; height: 40px; }
 .toast.is-leaving { animation: toast-out .2s var(--ease-in) both; }
 
 
@@ -1573,11 +1716,11 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   justify-content: center;
   gap: var(--s-1);
   padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
-  border-top: 1px solid var(--line);
-  background: rgba(255, 252, 247, .94);
+  border-top: 1px solid var(--filet);
+  background: rgba(12, 20, 48, .95);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow: 0 -4px 20px rgba(60, 40, 20, .06);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, .45);
 }
 .tabbar__item {
   position: relative;
@@ -1592,10 +1735,10 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   border: 0;
   border-radius: 12px;
   background: none;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .75rem;
   font-weight: 650;
-  letter-spacing: .02em;
+  letter-spacing: .03em;
   line-height: 1.1;
   text-decoration: none;
   cursor: pointer;
@@ -1607,11 +1750,11 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   border-radius: var(--r-pill);
   transition: background-color .2s;
 }
-.tabbar__item:hover { color: var(--green); }
+.tabbar__item:hover { color: var(--or-clair); }
 .tabbar__item[aria-current="page"],
-.tabbar__item[aria-selected="true"] { color: var(--green); font-weight: 750; }
+.tabbar__item[aria-selected="true"] { color: var(--or-clair); font-weight: 750; }
 .tabbar__item[aria-current="page"] .icon,
-.tabbar__item[aria-selected="true"] .icon { background: var(--green-bg); }
+.tabbar__item[aria-selected="true"] .icon { background: var(--or-bg); box-shadow: inset 0 0 0 1px var(--filet); }
 .tabbar__badge {
   position: absolute;
   top: 1px;
@@ -1620,9 +1763,9 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   height: 19px;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--oxblood);
-  color: var(--card);
-  box-shadow: 0 0 0 2px var(--card);
+  background: var(--or);
+  color: var(--nuit);
+  box-shadow: 0 0 0 2px var(--nuit-2);
   font-size: .6875rem;
   font-weight: 800;
   line-height: 19px;
@@ -1633,8 +1776,9 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 
 
 /* --------------------------------------------------------------------------
-   .appbar — en-tête compact collant (retour, titre, actions)
-   --green : façon devanture (fond vert, filet laiton)
+   .appbar — en-tête compact collant (retour, titre en Cinzel, actions)
+   --green : « écrin » (bande nuit pleine soulignée d'un filet d'or ; le nom de
+   la variante est historique, gardé car employé par js/pro/*.js)
    <header class="appbar">
      <a class="icon-btn appbar__back" href="#/" aria-label="Retour">{icon('chevron-gauche')}</a>
      <div class="appbar__titles"><h1 class="appbar__title">Agenda</h1>
@@ -1654,8 +1798,9 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: max(8px, env(safe-area-inset-left, 0px), calc((100% - var(--appbar-maxw)) / 2));
   padding-right: max(8px, env(safe-area-inset-right, 0px), calc((100% - var(--appbar-maxw)) / 2));
-  border-bottom: 1px solid var(--line);
-  background: rgba(244, 238, 228, .92);
+  border-bottom: 1px solid var(--filet);
+  background: rgba(7, 11, 24, .88);
+  color: var(--ivoire);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
@@ -1665,14 +1810,16 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 .appbar__title {
   overflow: hidden;
   font-family: var(--font-display);
-  font-size: 1.25rem;
-  line-height: 1.2;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: .03em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .appbar__subtitle {
   overflow: hidden;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .8125rem;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -1680,14 +1827,16 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
 }
 .appbar__actions { display: flex; align-items: center; gap: 2px; flex: none; }
 .appbar--green {
-  --focus-color: var(--brass-2);
   border-bottom: 0;
-  background: var(--green);
-  color: var(--card);
-  box-shadow: inset 0 -3px 0 var(--brass), 0 2px 10px rgba(28, 41, 37, .18);
+  background-color: var(--nuit-2);
+  background-image: linear-gradient(90deg, transparent, var(--or-fonce) 10%, var(--or) 50%, var(--or-fonce) 90%, transparent);
+  background-size: 100% 1px;
+  background-position: bottom;
+  background-repeat: no-repeat;
+  color: var(--ivoire);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
 }
-.appbar--green .appbar__subtitle { color: var(--brass-2); }
-@media (hover: hover) { .appbar--green .icon-btn:hover { background: rgba(255, 252, 247, .1); } }
+.appbar--green .appbar__subtitle { color: var(--or-clair); }
 
 
 /* --------------------------------------------------------------------------
@@ -1713,11 +1862,12 @@ button.pricelist__item, a.pricelist__item { min-height: 64px; cursor: pointer; }
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   padding-left: max(var(--gutter), env(safe-area-inset-left, 0px), calc((100% - var(--maxw)) / 2 + var(--gutter)));
   padding-right: max(var(--gutter), env(safe-area-inset-right, 0px), calc((100% - var(--maxw)) / 2 + var(--gutter)));
-  border-top: 1px solid var(--line);
-  background: rgba(255, 252, 247, .96);
+  border-top: 1px solid var(--filet);
+  background: rgba(12, 20, 48, .96);
+  color: var(--ivoire);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: 0 -8px 24px rgba(60, 40, 20, .08);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, .5);
   animation: cta-up .3s var(--ease-out) both;
 }
 body:has(.tabbar:not([hidden])) .sticky-cta {
@@ -1735,7 +1885,7 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
 }
 .sticky-cta__meta {
   overflow: hidden;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .8125rem;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -1768,26 +1918,27 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
   place-items: center;
   width: 72px; height: 72px;
   margin-bottom: var(--s-2);
-  border: 1.5px dashed var(--brass);
+  border: 1.5px dashed var(--filet-fort);
   border-radius: 50%;
-  background: var(--card);
-  color: var(--green);
+  background: var(--carte);
+  color: var(--or-clair);
+  box-shadow: inset 0 0 0 5px var(--carte), inset 0 0 0 6px var(--filet);
 }
 .empty__icon .icon { width: 30px; height: 30px; }
-.empty__title { font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.2; }
-.empty__text { max-width: 34ch; color: var(--ink-2); }
+.empty__title { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; line-height: 1.2; letter-spacing: .02em; }
+.empty__text { max-width: 34ch; color: var(--ivoire-2); }
 .empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); margin-top: var(--s-3); }
 
 
 /* --------------------------------------------------------------------------
-   .skeleton — emplacement de chargement (lueur chaude)
+   .skeleton — emplacement de chargement (lueur bleu nuit)
    --text (ligne), --title, --block (carte), --circle (avatar), --pill (bouton)
    <span class="skeleton skeleton--text" style="width: 60%"></span>
    -------------------------------------------------------------------------- */
 .skeleton {
   display: block;
   border-radius: 8px;
-  background: linear-gradient(100deg, var(--paper-2) 0 40%, #F6F0E6 50%, var(--paper-2) 60% 100%);
+  background: linear-gradient(100deg, var(--carte) 0 40%, var(--carte-2) 50%, var(--carte) 60% 100%);
   background-size: 300% 100%;
   color: transparent;
   animation: shimmer 1.5s ease-in-out infinite;
@@ -1812,9 +1963,11 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  padding: calc(7px + env(safe-area-inset-top, 0px)) var(--gutter) 9px;
-  background: var(--paper-2);
-  color: var(--ink-2);
+  padding: calc(7px + env(safe-area-inset-top, 0px)) var(--gutter) 10px;
+  background: rgba(12, 20, 48, .9);          /* verre fumé sur le marbre */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--ivoire-2);
   font-size: .8125rem;
   line-height: 1.3;
   text-align: center;
@@ -1825,14 +1978,13 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
   left: 0; right: 0; bottom: 0;
   height: 3px;
   background: var(--pole);
-  opacity: .85;
 }
 .demo-banner__tag {
   flex: none;
   padding: 2px 7px;
-  border: 1.5px solid var(--oxblood);
+  border: 1.5px solid var(--or);
   border-radius: var(--r-pill);
-  color: var(--oxblood);
+  color: var(--or-clair);
   font-size: .625rem;
   font-weight: 800;
   letter-spacing: .12em;
@@ -1862,8 +2014,9 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
        <div class="timeline__now" style="--top: …"><span class="timeline__now-label">14h12</span></div>
      </div>
    </div>
-   Variantes d'événement : --online, --done, --noshow, --cancelled, --next
-   (prochain client), --new (réservation pas encore vue), --short (< 30 min).
+   Variantes d'événement : --online (repère bleu roi), --done, --noshow,
+   --cancelled, --next (prochain client : cerné d'or), --new (réservation pas
+   encore vue), --short (< 30 min). Liseré gauche or = RDV confirmé.
    -------------------------------------------------------------------------- */
 .timeline {
   --ppm: 1.6px;
@@ -1880,7 +2033,7 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
   top: var(--top);
   right: 10px;
   transform: translateY(-50%);
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .75rem;
   font-weight: 700;
   line-height: 1;
@@ -1889,10 +2042,10 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
 .timeline__track {
   position: relative;
   height: var(--timeline-h, calc(var(--ppm) * 600));
-  border-left: 1px solid var(--line-2);
+  border-left: 1px solid var(--filet-fort);
   background-image:
-    repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px calc(var(--ppm) * 60)),
-    repeating-linear-gradient(to bottom, transparent 0 calc(var(--ppm) * 30), rgba(28, 41, 37, .05) calc(var(--ppm) * 30) calc(var(--ppm) * 30 + 1px), transparent calc(var(--ppm) * 30 + 1px) calc(var(--ppm) * 60));
+    repeating-linear-gradient(to bottom, rgba(242, 234, 216, .11) 0 1px, transparent 1px calc(var(--ppm) * 60)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--ppm) * 30), rgba(242, 234, 216, .05) calc(var(--ppm) * 30) calc(var(--ppm) * 30 + 1px), transparent calc(var(--ppm) * 30 + 1px) calc(var(--ppm) * 60));
   background-position: 0 var(--grid-offset);
 }
 .timeline__closed,
@@ -1904,16 +2057,18 @@ body:has(.tabbar:not([hidden])) .sticky-cta {
   display: flex;
   align-items: flex-start;
   padding: 5px 10px;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .6875rem;
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
   text-transform: uppercase;
 }
-.timeline__closed { background: rgba(234, 225, 210, .75); }
+/* Pause (hors horaires) : bande nuit unie */
+.timeline__closed { background: rgba(12, 20, 48, .88); box-shadow: inset 0 1px 0 var(--filet), inset 0 -1px 0 var(--filet); }
+/* Blocage (congé, indisponibilité) : hachures */
 .timeline__block {
-  border-block: 1px dashed var(--line-2);
-  background-color: rgba(244, 238, 228, .6);
+  border-block: 1px dashed var(--filet-fort);
+  background-color: rgba(7, 11, 24, .7);
   background-image: var(--hatch);
   text-align: left;
 }
@@ -1932,68 +2087,72 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   gap: 1px;
   padding: 5px 10px 5px 11px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--green);
+  border: 1px solid var(--filet);
+  border-left: 4px solid var(--or);
   border-radius: 10px;
-  background: var(--card);
+  background: var(--carte);
   box-shadow: var(--shadow-1);
-  color: var(--ink);
+  color: var(--ivoire);
   font-size: var(--fs-sm);
   line-height: 1.25;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
   z-index: 1;
-  transition: box-shadow .15s, transform .15s var(--ease-out);
+  transition: background-color .15s, box-shadow .15s, transform .15s var(--ease-out);
 }
-@media (hover: hover) { .timeline__event:hover { box-shadow: var(--shadow-2); z-index: 2; } }
+@media (hover: hover) { .timeline__event:hover { background-color: var(--carte-2); box-shadow: var(--shadow-2); z-index: 2; } }
 .timeline__event:active { transform: scale(.99); }
 .timeline__time {
-  color: var(--green);
+  color: var(--or-clair);
   font-size: .8125rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
 .timeline__name { overflow: hidden; font-size: .9375rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.timeline__service { overflow: hidden; color: var(--ink-2); text-overflow: ellipsis; white-space: nowrap; }
+.timeline__service { overflow: hidden; color: var(--ivoire-2); text-overflow: ellipsis; white-space: nowrap; }
 .timeline__event--short { flex-direction: row; align-items: center; gap: var(--s-2); padding-block: 2px; }
 .timeline__event--short .timeline__service { display: none; }
-.timeline__event--online { border-left-color: var(--brass); }
-.timeline__event--done { background: #F3F6F1; border-left-color: var(--ok); color: var(--ink-2); box-shadow: none; }
+.timeline__event--online { border-left-color: var(--roi-2); }
+.timeline__event--done {
+  background: linear-gradient(rgba(92, 194, 138, .08), rgba(92, 194, 138, .08)), var(--nuit-2);
+  border-left-color: var(--ok);
+  color: var(--ivoire-2);
+  box-shadow: none;
+}
 .timeline__event--done .timeline__time { color: var(--ok); }
 .timeline__event--noshow {
   border-left-color: var(--warn);
-  background: repeating-linear-gradient(-45deg, var(--warn-bg) 0 7px, #FBF4E4 7px 14px);
+  background: repeating-linear-gradient(-45deg, rgba(233, 180, 76, .16) 0 7px, rgba(233, 180, 76, .05) 7px 14px), var(--carte);
   box-shadow: none;
 }
 .timeline__event--noshow .timeline__time { color: var(--warn); }
 .timeline__event--cancelled {
   border-style: dashed;
   border-left-style: solid;
-  border-left-color: var(--line-2);
-  background: rgba(255, 252, 247, .5);
-  color: var(--ink-2);
+  border-color: var(--filet-fort);
+  background: rgba(7, 11, 24, .82);
+  color: var(--ivoire-2);
   box-shadow: none;
-  opacity: .75;
 }
 .timeline__event--cancelled .timeline__name { text-decoration: line-through; }
-.timeline__event--cancelled .timeline__time { color: var(--ink-2); }
-.timeline__event--next { box-shadow: 0 0 0 2px var(--oxblood), var(--shadow-2); z-index: 2; }
+.timeline__event--cancelled .timeline__time { color: var(--ivoire-2); }
+.timeline__event--next { box-shadow: 0 0 0 2px var(--or-clair), var(--shadow-2); z-index: 2; }
 .timeline__event--new::after {
   content: "";
   position: absolute;
   top: 7px; right: 7px;
   width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--oxblood);
-  box-shadow: 0 0 0 2px var(--card);
+  background: var(--or-clair);
+  box-shadow: 0 0 0 2px var(--carte);
 }
 .timeline__now {
   position: absolute;
   top: var(--top);
   left: 0; right: 0;
   height: 0;
-  border-top: 2px solid var(--oxblood);
+  border-top: 2px solid var(--or-clair);
   z-index: 3;
   pointer-events: none;
 }
@@ -2003,7 +2162,8 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   top: -6px; left: -6px;
   width: 10px; height: 10px;
   border-radius: 50%;
-  background: var(--oxblood);
+  background: var(--or-clair);
+  box-shadow: 0 0 0 2px var(--nuit);
 }
 .timeline__now-label {
   position: absolute;
@@ -2012,8 +2172,8 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   transform: translateY(-50%);
   padding: 2px 6px;
   border-radius: var(--r-pill);
-  background: var(--oxblood);
-  color: var(--card);
+  background: var(--or-clair);
+  color: var(--nuit);
   font-size: .6875rem;
   font-weight: 800;
   line-height: 1.3;
@@ -2023,12 +2183,12 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
 
 
 /* --------------------------------------------------------------------------
-   .stat — chiffre clé ; .stats : grille de chiffres
+   .stat — chiffre clé en Cinzel ; .stats : grille de chiffres
    <div class="stats">
      <div class="stat"><span class="stat__value">12</span>
        <span class="stat__label">RDV aujourd'hui</span><span class="stat__hint">dont 3 en ligne</span></div>
    </div>
-   --accent : valeur sang-de-bœuf ; --plain : sans carte
+   --accent : chiffre à remarquer (or, filet d'or en tête) ; --plain : sans carte
    -------------------------------------------------------------------------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-3); }
 .stat {
@@ -2036,27 +2196,30 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   flex-direction: column;
   gap: 3px;
   padding: var(--s-4);
-  border: 1px solid rgba(28, 41, 37, .06);
+  border: 1px solid var(--filet);
   border-radius: var(--r-card);
-  background: var(--card);
+  background: var(--carte);
   box-shadow: var(--shadow-1);
 }
 .stat__value {
-  color: var(--green);
-  font-family: var(--font-display);
+  color: var(--ivoire);
+  font-family: var(--font-body);        /* peut contenir une heure (« Trou libre ») : pas de Cinzel */
   font-size: 2rem;
+  font-weight: 700;
   line-height: 1.05;
+  letter-spacing: .01em;
   font-variant-numeric: tabular-nums lining-nums;
 }
 .stat__label {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
   text-transform: uppercase;
 }
-.stat__hint { color: var(--ink-2); font-size: .8125rem; }
-.stat--accent .stat__value { color: var(--oxblood); }
+.stat__hint { color: var(--ivoire-2); font-size: .8125rem; }
+.stat--accent { box-shadow: inset 0 2px 0 var(--or), var(--shadow-1); }
+.stat--accent .stat__value { color: var(--or-clair); }
 .stat--plain { padding: 0; border: 0; background: none; box-shadow: none; }
 
 
@@ -2076,12 +2239,12 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   margin: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(28, 41, 37, .06);
+  border: 1px solid var(--filet);
   border-radius: var(--r-card);
-  background: var(--card);
+  background: var(--carte);
   box-shadow: var(--shadow-1);
 }
-.list > li + li { border-top: 1px solid var(--line); }
+.list > li + li { border-top: 1px solid var(--filet); }
 .list__item {
   display: flex;
   align-items: center;
@@ -2096,16 +2259,17 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   text-decoration: none;
 }
 :is(a, button).list__item { cursor: pointer; transition: background-color .15s; }
-@media (hover: hover) { :is(a, button).list__item:hover { background: rgba(244, 238, 228, .6); color: inherit; } }
-.list__item > .icon { color: var(--ink-2); }
+@media (hover: hover) { :is(a, button).list__item:hover { background: var(--carte-2); color: inherit; } }
+.list__item > .icon { color: var(--ivoire-2); }
 .list__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .list__title { overflow: hidden; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
-.list__meta { overflow: hidden; color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.list__aside { flex: none; color: var(--ink-2); font-size: var(--fs-sm); text-align: right; font-variant-numeric: tabular-nums; }
+.list__meta { overflow: hidden; color: var(--ivoire-2); font-size: var(--fs-sm); line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.list__aside { flex: none; color: var(--ivoire-2); font-size: var(--fs-sm); text-align: right; font-variant-numeric: tabular-nums; }
 
 
 /* --------------------------------------------------------------------------
-   .avatar — initiales dans un rond ; --accent (sang-de-bœuf), --lg (64 px)
+   .avatar — initiales en Cinzel dans un médaillon cerclé d'or
+   --accent (client à surveiller : lapins), --lg (64 px)
    -------------------------------------------------------------------------- */
 .avatar {
   display: inline-grid;
@@ -2113,21 +2277,24 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   flex: none;
   width: 44px; height: 44px;
   border-radius: 50%;
-  background: var(--green-bg);
-  color: var(--green);
+  background: var(--carte-2);
+  color: var(--or-clair);
+  box-shadow: inset 0 0 0 1px var(--filet-fort);
   font-family: var(--font-display);
   font-size: 1rem;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: .02em;
+  letter-spacing: .04em;
   text-transform: uppercase;
 }
-.avatar--accent { background: var(--danger-bg); color: var(--oxblood-2); }
+.avatar--accent { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 1px rgba(233, 180, 76, .55); }
 .avatar--lg { width: 64px; height: 64px; font-size: 1.375rem; }
 
 
 /* --------------------------------------------------------------------------
    .notice — encadré d'information (congés, réservation suspendue, rappel)
-   --warn (ambre), --danger (sang-de-bœuf), --info (vert) ; défaut : laiton
+   défaut : or · --warn (ambre) · --danger (corail) · --info (bleu roi)
+   Texte toujours --ivoire ; la couleur passe par le cadre et le pictogramme.
    <div class="notice" role="status">{icon('info')}<div><p class="notice__title">Fermeture</p><p>…</p></div></div>
    -------------------------------------------------------------------------- */
 .notice {
@@ -2135,64 +2302,109 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   align-items: flex-start;
   gap: var(--s-3);
   padding: 14px var(--s-4);
-  border: 1px solid rgba(181, 138, 69, .45);
+  border: 1px solid rgba(214, 177, 94, .45);
   border-radius: var(--r-card);
-  background: var(--brass-bg);
-  color: #4A3714;
+  background: var(--or-bg);
+  color: var(--ivoire);
   font-size: .9375rem;
   line-height: 1.45;
 }
-.notice > .icon { width: 22px; height: 22px; margin-top: 1px; }
+.notice > .icon { width: 22px; height: 22px; margin-top: 1px; color: var(--or-clair); }
 .notice__title { font-weight: 750; }
-.notice--warn { border-color: rgba(138, 90, 0, .3); background: var(--warn-bg); color: #5C3C00; }
-.notice--danger { border-color: rgba(155, 52, 38, .3); background: var(--danger-bg); color: var(--oxblood-2); }
-.notice--info { border-color: rgba(35, 65, 58, .2); background: var(--green-bg); color: var(--green); }
+.notice--warn { border-color: rgba(233, 180, 76, .5); background: var(--warn-bg); }
+.notice--warn > .icon { color: var(--warn); }
+.notice--danger { border-color: rgba(232, 112, 95, .55); background: var(--danger-bg); }
+.notice--danger > .icon { color: var(--danger); }
+.notice--info { border-color: rgba(58, 96, 230, .6); background: var(--roi-bg); }
+.notice--info > .icon { color: var(--ivoire-2); }
 
 
 /* --------------------------------------------------------------------------
-   .signboard — l'enseigne : nom du salon peint sur la devanture verte
+   .signboard — l'enseigne : marbre sous voile, double filet d'or, nom du
+   salon en Cinzel. Page cliente et écran de connexion pro (blason en tête).
+   Le fond marbre est celui de .marbre (section 5) : --voile le règle.
    <header class="signboard">
+     <span class="blason"><img src="img/blason.webp" alt="Private Barbière" width="655" height="742"></span>
      <p class="signboard__kicker">Barbière</p>
-     <h1 class="signboard__name">Nom du salon</h1>
+     <h1 class="signboard__name">Private Barbière</h1>
      <p class="signboard__meta">Adresse · Ville</p>
    </header>
    -------------------------------------------------------------------------- */
 .signboard {
-  --focus-color: var(--brass-2);
   position: relative;
-  padding: var(--s-6) var(--s-5) var(--s-5);
+  padding: var(--s-6) var(--s-5) var(--s-6);
+  border: 1px solid var(--filet-fort);
   border-radius: var(--r-card);
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(255, 252, 247, .08), transparent 60%),
-    var(--green);
-  color: var(--card);
+  color: var(--ivoire);
   text-align: center;
-  box-shadow: inset 0 0 0 5px var(--green), inset 0 0 0 6px rgba(217, 190, 140, .75), var(--shadow-2);
+  box-shadow: var(--shadow-2);
 }
+.signboard::before {                      /* second filet d'or, en retrait */
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--filet);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.signboard .blason { --blason-w: min(58vw, 210px); margin-bottom: var(--s-3); }
 .signboard__kicker {
-  color: var(--brass-2);
+  color: var(--or-clair);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .22em;
+  letter-spacing: .26em;
   text-transform: uppercase;
 }
 .signboard__name {
   margin-top: var(--s-2);
+  color: var(--or-clair);
   font-family: var(--font-display);
-  font-size: clamp(1.75rem, 8vw, 2.5rem);
-  line-height: 1.05;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, .18);
+  font-size: clamp(1.625rem, 8vw, 2.375rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: .04em;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .7);
 }
-.signboard__meta { margin-top: var(--s-2); color: rgba(255, 252, 247, .78); font-size: var(--fs-sm); }
+.signboard__meta { margin-top: var(--s-2); color: var(--ivoire); font-size: var(--fs-sm); }
 .signboard::after {                       /* liseré rayé du poteau sous l'enseigne */
   content: "";
   position: absolute;
-  left: 22%; right: 22%;
+  left: 24%; right: 24%;
   bottom: -3px;
   height: 6px;
   border-radius: 3px;
   background: var(--pole);
-  box-shadow: 0 1px 2px rgba(60, 40, 20, .2);
+  box-shadow: 0 0 0 1px rgba(214, 177, 94, .6), 0 2px 6px rgba(0, 0, 0, .6);
+}
+
+
+/* --------------------------------------------------------------------------
+   .blason — le blason PRIVATE BARBIÈRE (img/blason.webp, fond transparent,
+   655 × 742). Seule image de marque : jamais déformé, recoloré ni recadré.
+   Un reflet glisse une fois dessus à l'ouverture (coupé si mouvement réduit).
+   Largeur : --blason-w (défaut 200 px).
+   <span class="blason"><img src="img/blason.webp" alt="Private Barbière" width="655" height="742"></span>
+   -------------------------------------------------------------------------- */
+.blason {
+  --blason-w: 200px;
+  position: relative;
+  display: block;
+  width: var(--blason-w);
+  max-width: 100%;
+  margin-inline: auto;
+  aspect-ratio: 655 / 742;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .6));
+}
+.blason > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.blason::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 244, 214, .5) 49%, rgba(255, 244, 214, .12) 53%, transparent 60%) 0 0 / 260% 100% no-repeat;
+  -webkit-mask: url('../img/blason.webp') center / contain no-repeat;
+  mask: url('../img/blason.webp') center / contain no-repeat;
+  pointer-events: none;
+  animation: reflet 1.8s var(--ease-out) .45s 1 both;
 }
 
 
@@ -2204,8 +2416,9 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
 .install-help__demo {
   position: relative;
   overflow: hidden;
+  border: 1px solid var(--filet);
   border-radius: 18px;
-  background: var(--paper-2);
+  background: var(--nuit);
   padding: var(--s-5) var(--s-5) 0;
 }
 .install-help__screen {
@@ -2213,12 +2426,12 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   place-items: center;
   height: 92px;
   border-radius: 14px 14px 0 0;
-  background: var(--card);
+  background: var(--carte);
 }
 .install-help__appicon {
   width: 56px; height: 56px;
   border-radius: 13px;
-  box-shadow: 0 4px 12px rgba(60, 40, 20, .2);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .6);
 }
 .install-help__toolbar {
   display: flex;
@@ -2226,26 +2439,27 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   align-items: center;
   height: 52px;
   padding: 0 var(--s-2);
-  border-top: 1px solid var(--line);
-  background: #F7F4EF;
-  color: #2B6CD9;                          /* bleu des barres de Safari */
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  background: #1C1C1E;                     /* barre de Safari en mode sombre */
+  color: #0A84FF;                          /* bleu des barres de Safari (4,7:1) */
 }
 .install-help__tool { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; }
 .install-help__tool .icon { width: 22px; height: 22px; }
-.install-help__tool--share { position: relative; box-shadow: 0 0 0 2.5px var(--oxblood); animation: ring 1.8s ease-out infinite; }
+.install-help__tool--share { position: relative; box-shadow: 0 0 0 2.5px var(--or); animation: ring 1.8s ease-out infinite; }
 .install-help__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-4); counter-reset: none; }
 .install-help__step { display: flex; align-items: flex-start; gap: var(--s-3); line-height: 1.45; }
-.install-help__step .icon { color: #2B6CD9; }
+.install-help__step .icon { color: #0A84FF; }
 .install-help__num {
   display: grid;
   place-items: center;
   flex: none;
   width: 28px; height: 28px;
   border-radius: 50%;
-  background: var(--green);
-  color: var(--card);
+  background: var(--or);
+  color: var(--nuit);
   font-family: var(--font-display);
   font-size: .9375rem;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -2255,21 +2469,22 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
    -------------------------------------------------------------------------- */
 .prose { max-width: 65ch; line-height: 1.6; }
 .prose > * + * { margin-top: var(--s-3); }
-.prose h1 { font-size: var(--fs-3xl); line-height: 1.08; }
+.prose h1 { font-size: clamp(1.75rem, 8vw, var(--fs-3xl)); line-height: 1.1; }
 .prose h2 {
   margin-top: var(--s-8);
   padding-top: var(--s-4);
-  border-top: 1px solid var(--line);
-  font-size: var(--fs-xl);
+  border-top: 1px solid var(--filet);
+  color: var(--ivoire);
+  font-size: 1.25rem;
 }
-.prose h3 { margin-top: var(--s-5); font-family: var(--font-body); font-size: var(--fs-md); font-weight: 750; }
+.prose h3 { margin-top: var(--s-5); font-family: var(--font-body); font-size: var(--fs-md); font-weight: 750; letter-spacing: 0; color: var(--or-clair); }
 .prose ul, .prose ol { padding-left: 1.25em; }
 .prose li + li { margin-top: var(--s-1); }
-.prose li::marker { color: var(--brass); }
-.prose a { color: var(--green); }
-.prose strong { font-weight: 700; }
+.prose li::marker { color: var(--or); }
+.prose a { color: var(--or-clair); }
+.prose strong { font-weight: 700; color: var(--ivoire); }
 .prose dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s-1) var(--s-4); }
-.prose dt { color: var(--ink-2); }
+.prose dt { color: var(--ivoire-2); }
 .prose dd { margin: 0; font-weight: 600; }
 
 
@@ -2278,12 +2493,12 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
    -------------------------------------------------------------------------- */
 .app-footer {
   padding: var(--s-6) var(--gutter) var(--s-7);
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .8125rem;
   text-align: center;
 }
-.app-footer a { color: inherit; }
-.app-footer a:hover { color: var(--green); }
+.app-footer a { color: inherit; text-decoration-color: var(--filet-fort); }
+.app-footer a:hover { color: var(--or-clair); }
 
 
 /* --------------------------------------------------------------------------
@@ -2293,8 +2508,9 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
   max-width: var(--maxw);
   margin: var(--s-6) auto;
   padding: var(--s-5);
+  border: 1px solid var(--filet);
   border-radius: var(--r-card);
-  background: var(--card);
+  background: var(--carte);
   box-shadow: var(--shadow-1);
   line-height: 1.5;
 }
@@ -2318,10 +2534,11 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
 @keyframes slot-turn { to { background-position: 0 0, 28px 0; } }
 @keyframes stamp-in {
   0%   { opacity: 0; transform: rotate(-3deg) scale(1.9); }
-  55%  { opacity: .9; transform: rotate(-13deg) scale(.93); }
+  55%  { opacity: .95; transform: rotate(-13deg) scale(.93); }
   75%  { transform: rotate(-11.5deg) scale(1.02); }
-  100% { opacity: .82; transform: rotate(-12deg) scale(1); }
+  100% { opacity: .92; transform: rotate(-12deg) scale(1); }
 }
+@keyframes reflet { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @keyframes sheet-up { from { transform: translateY(100%); } }
 @keyframes sheet-down { to { transform: translateY(100%); } }
 @keyframes sheet-pop { from { opacity: 0; transform: translateY(16px) scale(.98); } }
@@ -2334,8 +2551,8 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @keyframes pulse-dot { 50% { opacity: .35; } }
 @keyframes ring {
-  0%   { box-shadow: 0 0 0 2.5px var(--oxblood), 0 0 0 2.5px rgba(155, 52, 38, .35); }
-  100% { box-shadow: 0 0 0 2.5px var(--oxblood), 0 0 0 14px rgba(155, 52, 38, 0); }
+  0%   { box-shadow: 0 0 0 2.5px var(--or), 0 0 0 2.5px rgba(214, 177, 94, .4); }
+  100% { box-shadow: 0 0 0 2.5px var(--or), 0 0 0 14px rgba(214, 177, 94, 0); }
 }
 
 /* Mouvement réduit : tout s'arrête, l'état final s'affiche directement */
@@ -2347,6 +2564,6 @@ button.timeline__block { width: 100%; border-inline: 0; cursor: pointer; }
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
-  .reveal, .ticket__stamp, .sheet__panel, .sheet__backdrop, .toast, .sticky-cta { animation: none !important; }
+  .reveal, .ticket__stamp, .sheet__panel, .sheet__backdrop, .toast, .sticky-cta, .blason::after { animation: none !important; }
   .btn:active, .slots__slot:active, .icon-btn:active, .card--interactive:active { transform: none; }
 }

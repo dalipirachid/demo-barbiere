@@ -19,7 +19,8 @@ import { readMesRdv, saveMesRdv, removeMesRdv } from './memoire.js';
 import { appbar, progress, animateProgress, bookingSkeleton, errorView, TRANSIENT_CODES } from './commun.js';
 import { buildICS, downloadICS } from './ics.js';
 import { cancelWithConfirm } from './annulation.js';
-import { txt, tzOf, addressText, mapsUrl, setDocumentTitle } from './salon.js';
+import { displayName } from '../core/setup.js';
+import { txt, tzOf, addressText, placeText, mapsUrl, salonTitle, setDocumentTitle } from './salon.js';
 
 const TITLE = 'Votre rendez-vous';
 const NNBSP = ' ';   // espace fine insécable avant « ! »
@@ -151,6 +152,7 @@ function view(salon, token, { booking, fresh, offline }) {
 
       <article class="ticket rdv__ticket rdv__ticket--${k} reveal" style="--i: 0" aria-labelledby="rdv-title">
         <div class="ticket__main">
+          ${stamp ? html`<span class="ticket__stamp" aria-hidden="true">${stamp}</span>` : ''}
           <p class="ticket__kicker">${kicker}</p>
           <h1 class="ticket__title" id="rdv-title" tabindex="-1" data-screen-title>${title}</h1>
           <p class="ticket__when">${fmtDayLong(ymd)} · ${fmtTime(booking.start, tz)}</p>
@@ -159,11 +161,10 @@ function view(salon, token, { booking, fresh, offline }) {
             ${duration > 0 ? html`<div><dt>Durée</dt><dd>${fmtDuration(duration)}</dd></div>` : ''}
             ${Number.isFinite(booking.priceCents) ? html`<div><dt>Prix</dt><dd>${fmtPrice(booking.priceCents)}</dd></div>` : ''}
           </dl>
-          ${stamp ? html`<span class="ticket__stamp" aria-hidden="true">${stamp}</span>` : ''}
         </div>
         <div class="ticket__stub">
           <div class="stack stack--sm">
-            ${address ? html`<p class="rdv__address">${icon('epingle')}<span><span class="rdv__salon">${txt(salon.name)}</span>${txt(address)}</span></p>` : ''}
+            ${address ? html`<p class="rdv__address">${icon('epingle')}<span><span class="rdv__salon">${txt(salonTitle(salon))}</span>${txt(address)}</span></p>` : ''}
             ${k === 'upcoming' && cancelHours > 0
               ? html`<p class="muted small">Annulation en ligne possible jusqu’à ${cancelHours}${NNBSP}h avant le rendez-vous.</p>` : ''}
             <div class="rdv__actions">
@@ -234,13 +235,13 @@ export function ticketICS(salon, token, booking, { base, now = new Date() } = {}
   const tz = tzOf(salon);
   const end = booking.end || new Date(toMs(booking.start) + 30 * 60_000).toISOString();
   const link = ticketLink(token, base);
-  const salonName = String(salon.name || '').trim();
+  const salonName = displayName(salon);   // '' tant que le nom est à compléter
   return buildICS({
     uid: `${token}@barbiere`,
     start: booking.start,
     end,
     summary: salonName ? `${booking.serviceName} — ${salonName}` : booking.serviceName,
-    location: addressText(salon),
+    location: placeText(salon),        // jamais de marqueur « [À COMPLÉTER] » dans l'agenda
     description: `${booking.serviceName}${Number.isFinite(booking.priceCents) ? ` (${fmtPrice(booking.priceCents)})` : ''}.\n`
       + `Voir ou annuler le rendez-vous : ${link}`,
     url: link,
@@ -264,7 +265,7 @@ function canShare() {
 async function keepLink(root, salon, token, booking) {
   const link = ticketLink(token);
   if (canShare()) {
-    const name = String(salon.name || '').trim();
+    const name = displayName(salon);
     const when = fmtDateTime(booking.start, tzOf(salon));
     try {
       await navigator.share({

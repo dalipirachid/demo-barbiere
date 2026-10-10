@@ -167,7 +167,8 @@ export function fmtPrice(cents) {
   const abs = Math.abs(n);
   const euros = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   const rest = abs % 100;
-  return `${n < 0 ? '-' : ''}${euros}${rest ? ',' + pad(rest) : ''} €`;
+  // Espace insécable : « € » ne se retrouve jamais seul en début de ligne.
+  return `${n < 0 ? '-' : ''}${euros}${rest ? ',' + pad(rest) : ''} €`;
 }
 
 /** '45 min' | '1 h' | '1 h 15' */

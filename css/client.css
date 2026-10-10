@@ -1,13 +1,18 @@
 /* ==========================================================================
-   Planning Barbière — écrans côté client (réservation)
+   Planning Barbière — écrans côté client (réservation) · « Private Barbière »
    --------------------------------------------------------------------------
    Uniquement la mise en page propre aux écrans client. Jetons et composants
-   (.signboard, .pricelist, .daystrip, .slots, .ticket, .sticky-cta…) :
-   css/app.css — catalogue : styleguide.html.
+   (.marbre, .blason, .filet-orne, .pricelist, .daystrip, .slots, .ticket,
+   .sticky-cta…) : css/app.css — catalogue : styleguide.html.
+   Seuls les nouveaux jetons sont employés ici (--nuit, --carte, --ivoire,
+   --or-clair…), jamais les alias des anciens noms.
+
+   Contrastes WCAG calculés pour les couples introduits ici (texte < 18 px :
+   ≥ 4,5:1 ; repères graphiques : ≥ 3:1) — détail en tête de chaque section.
 
    Sommaire
-     1. Commun (bandeau démo, titres d'écran, re-rendu silencieux)
-     2. Accueil
+     1. Commun (bandeau démo, titres d'écran, re-rendu silencieux, safe-area)
+     2. Accueil : blason sur le marbre, infos pratiques, tarifs
      3. Réservation : progression, prestation, jours, créneaux
      4. Formulaire de coordonnées
      5. Ticket de confirmation
@@ -19,9 +24,9 @@
    1. Commun
    ========================================================================== */
 
-/* Lien « Espace barbière » ajouté au bandeau démo */
+/* Lien « Espace barbière » ajouté au bandeau démo (--or-clair / --nuit-2 : 11,9:1) */
 .demo-banner__link {
-  color: var(--green);
+  color: var(--or-clair);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -30,26 +35,104 @@
    commande, pas d'anneau de focus. */
 [data-screen-title]:focus { outline: none; }
 
-/* Re-rendu silencieux (données mises à jour) : pas de nouvelle entrée en cascade */
-.is-quiet .reveal { animation: none; }
+/* Re-rendu silencieux (données mises à jour) : pas de nouvelle entrée en
+   cascade, et le reflet du blason ne repasse pas à chaque actualisation. */
+.is-quiet .reveal,
+.is-quiet .blason::after { animation: none; }
 
 /* Pied de page : pas de marge géante sous les écrans à barre collante */
 .app--client .app-footer { padding-top: var(--s-2); }
 
+/* Barre d'état iOS translucide (black-translucent) : la réserve est faite par
+   la règle .page d'app.css (--page-safe-top), seulement quand l'écran commence
+   par .page sans appbar ni bandeau démo au-dessus (accueil en production, page
+   d'erreur). Un écran qui change son padding-top l'ajoute (voir .home). */
+
 
 /* ==========================================================================
    2. Accueil
+   --------------------------------------------------------------------------
+   L'enseigne (.signboard d'app.css : marbre sous voile .66 → .88, double
+   filet d'or, liseré du poteau) porte le blason, seule image de marque. Le
+   nom « Private Barbière » est écrit sur son ruban : le <h1> (nom du salon)
+   reste alors pour les lecteurs d'écran (.sr-only) ; s'il diffère, il
+   s'affiche en Cinzel sous le blason (.signboard__name).
+   Blason masqué par la barbière (salon.showCrest = false, .home__sign--nom) :
+   le nom en grand, filet orné et accroche dessous, même hauteur d'enseigne.
+   Nom encore « [À COMPLÉTER] » : marqueur .todo sur fond opaque (le fond
+   translucide d'app.css ne donnerait que 3,9:1 sur le marbre).
+   Contrastes (pixel le plus clair du marbre, rgb(212,180,123), sous le voile
+   .66) : --or-clair 6,3:1 (nom, accroche) ; marqueur --warn sur --warn-bg
+   posé sur --nuit-2 : 7,5:1 quel que soit le marbre dessous.
+   Sur la page : --or-clair / --nuit 12,9 (titre des tarifs) ; --ivoire-2 /
+   --nuit 10,9 (consigne, prochain créneau) ; --ivoire / --carte 14,1 (statut,
+   adresse) ; --or-clair / --carte 11,1 (« Itinéraire ») ; pastilles d'état
+   (repères) : --danger / --carte 5,5 et --ok / --carte 7,6.
    ========================================================================== */
 
-.home { --gap: var(--s-5); }
+/* L'accueil commence par .page : la barre d'état iOS s'ajoute à son haut. */
+.home { --gap: var(--s-5); padding-top: calc(var(--s-4) + var(--page-safe-top, 0px)); }
 
-.home__skeleton-sign { height: 168px; }
+/* — L'enseigne — */
+.home__sign { padding: var(--s-6) var(--s-4) var(--s-6); }
+.home__sign--solo { padding-bottom: var(--s-7); }   /* le liseré du poteau reste à distance du blason */
+.home__sign--solo .blason { margin-bottom: 0; }
+
+/* Le blason, ~60 % de l'écran, 228 px au plus, et jamais plus de 28 % de la
+   hauteur (petit téléphone, ou tenu à l'horizontale) : « Prendre rendez-vous »
+   reste visible à l'ouverture. Emplacement réservé identique pendant le chargement,
+   et même hauteur pour l'enseigne sans blason (--enseigne-w sur l'en-tête). */
+.home__sign { --enseigne-w: min(60vw, 228px, 28vh); }
+@supports (height: 1svh) {
+  .home__sign { --enseigne-w: min(60vw, 228px, 28svh); }
+}
+.home__sign :is(.blason, .home__blason--wait) { --blason-w: var(--enseigne-w); }
+.home__blason--wait {
+  display: block;
+  width: var(--blason-w);
+  margin-inline: auto;
+  aspect-ratio: 655 / 742;
+}
+
+/* Le nom du salon sur l'enseigne. Taille calculée pour que le mot le plus long
+   (--mot lettres, posé par accueil.js) tienne sur une ligne dans la largeur
+   utile (colonne de 560 px au plus, moins gouttières, marges de l'enseigne et
+   filets : 72 px), plafonnée par --nom-max ; un mot hors norme se coupe au
+   lieu de déborder. */
+.home__sign .home__sign-name {
+  font-size: clamp(1.125rem, calc((min(100vw, var(--maxw)) - 72px) / (var(--mot, 8) * .8)), var(--nom-max, 2.375rem));
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+/* Nom encore à compléter : une étiquette lisible, pas une fausse enseigne. */
+.home__sign .home__sign-name--todo {
+  font-family: var(--font-body);
+  font-size: var(--fs-xl);
+  line-height: 1.5;
+  letter-spacing: .01em;
+  text-shadow: none;
+}
+.home__sign .todo { background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--nuit-2); }
+
+/* Sans blason : le nom fait l'enseigne, centré dans la même hauteur que la
+   version au blason (blason + marges de .home__sign--solo + bordure). */
+.home__sign--nom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  min-height: calc(var(--enseigne-w) * 742 / 655 + var(--s-6) + var(--s-7) + 2px);
+  padding-bottom: var(--s-7);
+}
+.home__sign--nom .home__sign-name { max-width: 100%; margin: 0; }
+.home__sign-filet { width: min(200px, 64%); margin: 0; }
+.home__sign-tagline { max-width: 100%; overflow-wrap: anywhere; }
 
 .home__notice-text { white-space: pre-line; }
 
-/* L'enseigne : un peu d'air sous le liseré rayé du poteau */
-.home .signboard { margin-bottom: var(--s-1); }
-
+/* — Infos pratiques — */
 .home__info {
   display: grid;
   gap: var(--s-2);
@@ -61,6 +144,7 @@
   align-items: center;
   gap: var(--s-3);
   min-height: 32px;
+  color: var(--ivoire);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -70,7 +154,7 @@
   height: 10px;
   margin-inline: 7px;
   border-radius: 50%;
-  background: var(--oxblood);
+  background: var(--danger);
   box-shadow: 0 0 0 4px var(--danger-bg);
 }
 .home__status.is-open .home__status-dot {
@@ -84,61 +168,78 @@
   gap: var(--s-3);
   min-height: var(--tap);
   padding-block: var(--s-1);
-  color: var(--ink);
+  color: var(--ivoire);
   text-decoration: none;
 }
-.home__address > .icon { margin-top: 2px; color: var(--green); }
+.home__address > .icon { margin-top: 2px; color: var(--or-clair); }
 .home__address-text { min-width: 0; line-height: 1.4; }
 .home__address-hint {
   display: block;
-  color: var(--green);
+  color: var(--or-clair);
   font-size: var(--fs-sm);
   font-weight: 650;
   text-decoration: underline;
+  text-decoration-color: rgba(235, 207, 140, .45);
+  text-decoration-thickness: 1px;
   text-underline-offset: .18em;
 }
-.home__address:hover { color: var(--ink); }
+a.home__address:hover { color: var(--ivoire); }
+a.home__address:hover .home__address-hint { text-decoration-color: currentColor; }
+/* Adresse encore à compléter : affichée sans lien d'itinéraire (p.home__address) */
+p.home__address { align-items: center; }
 
 .home__contact {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
   padding-top: var(--s-2);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--filet);
 }
 
+/* — Prochain créneau + action principale — */
 .home__book { display: grid; gap: var(--s-3); }
 .home__next {
   display: flex;
   align-items: center;
   gap: var(--s-2);
   min-height: 28px;
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: .9375rem;
   font-variant-numeric: tabular-nums;
 }
-.home__next > .icon { color: var(--green); }
-.home__next strong { color: var(--ink); font-weight: 700; }
+.home__next > .icon { color: var(--or-clair); }
+.home__next strong { color: var(--ivoire); font-weight: 700; }
 .home__next-skeleton { flex: 1; max-width: 260px; margin: 0; }
 
 .home__suspended .btn { margin-top: var(--s-1); }
 
-.home__mine .section-title,
-.home__tarifs .section-title { margin-top: var(--s-2); }
+/* — Mes rendez-vous — */
+.home__mine .section-title { margin-top: var(--s-2); }
 .home__mine-icon { width: 40px; height: 40px; }
 .home__mine-icon .icon { width: 20px; height: 20px; }
 .home__mine-all { margin-top: var(--s-2); margin-left: calc(-1 * var(--s-3)); }
 .home__mine-all .icon { width: 18px; height: 18px; }
 
+/* — La carte des prestations : filet orné, titre en Cinzel or, tarifs or sur nuit — */
 .home__tarifs { scroll-margin-top: var(--s-4); }
-.home__tarifs-hint { margin: calc(-1 * var(--s-1)) 0 var(--s-3); }
+.home__tarifs-filet { width: min(220px, 64%); margin: var(--s-3) auto var(--s-4); }
+.home__tarifs-title {
+  color: var(--or-clair);
+  font-size: 1.3125rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-align: center;
+}
+.home__tarifs-hint { margin: var(--s-2) 0 var(--s-4); text-align: center; }
 .home__tarifs .pricelist { margin-inline: calc(-1 * var(--s-2)); }
 .home__tarifs .pricelist--board { margin-inline: 0; }
-.home__demo-note { margin-top: var(--s-4); font-style: italic; }
+.home__demo-note { margin-top: var(--s-4); font-style: italic; text-align: center; }
 
 
 /* ==========================================================================
    3. Réservation : progression, prestation, jours, créneaux
+   Contrastes : étiquette --ivoire-2 / --nuit 10,9 et étape --or-clair / --nuit
+   12,9 ; détails de la prestation --ivoire-2 / --carte 9,4 et / --nuit-2 10,1.
    ========================================================================== */
 
 .booking { --gap: var(--s-5); padding-top: var(--s-4); }
@@ -147,13 +248,13 @@
 
 .booking-progress { display: grid; gap: var(--s-2); }
 .booking-progress__label {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
-.booking-progress__step { color: var(--oxblood); }
+.booking-progress__step { color: var(--or-clair); }
 
 /* Rappel de la prestation choisie */
 .booking-service,
@@ -168,17 +269,22 @@
 .booking-recap__text { flex: 1; min-width: 0; }
 .booking-service__name,
 .booking-recap__title {
+  color: var(--ivoire);
   font-family: var(--font-display);
   font-size: var(--fs-lg);
+  font-weight: 600;
   line-height: 1.25;
+  letter-spacing: .02em;
 }
 .booking-service__meta,
 .booking-recap__meta {
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
-.booking-recap__meta:first-of-type { color: var(--ink); font-weight: 650; }
+/* Le jour et l'heure, information clé du récapitulatif (le 1er <p> est le titre :
+   :first-of-type ne visait jamais cette ligne) */
+.booking-recap__title + .booking-recap__meta { color: var(--ivoire); font-weight: 650; }
 
 /* Un jour « complet » ou « terminé » reste choisissable (il propose le prochain créneau) */
 .daystrip__day--full { cursor: pointer; }
@@ -192,10 +298,17 @@
 
 /* ==========================================================================
    4. Formulaire de coordonnées
+   (champs, cases et erreurs : composants .field / .check d'app.css ;
+   erreurs --danger / --nuit 6,5:1)
    ========================================================================== */
 
 .booking-form__fields { --gap: var(--s-4); }
-.booking-form__note { min-height: 80px; }
+/* Prénom / Nom : une erreur plus longue d'un côté ne doit pas étirer l'autre
+   champ (la grille alignerait sinon les deux hauteurs). */
+.booking-form .field-row { align-items: start; }
+/* Précision facultative : plus basse que la zone de texte par défaut (104 px),
+   le formulaire tient mieux sous le pouce. (0,2,0) l'emporte sur « .field textarea ». */
+.booking-form .booking-form__note { min-height: 80px; }
 .booking-form__checks { display: grid; gap: 0; }
 /* Bloc rendu visible d'un coup (case + message) quand le consentement manque */
 .booking-form__consent { scroll-margin-block: var(--s-2); }
@@ -210,13 +323,45 @@
 
 /* ==========================================================================
    5. Ticket de confirmation
+   Le haut du ticket est en marbre voilé (intégré à .ticket, app.css).
+   Contrastes au pixel le plus clair du marbre, rgb(212,180,123), sous le voile
+   à la hauteur du texte (mesurés dans le navigateur) : kicker et tampon
+   --or-clair 7,5 (voile .71) et au pire 6,6 (voile .66, tout en haut) ; titre
+   --ivoire 11,6 ; --ivoire-2 au pire 5,6 (kicker d'un RDV passé).
+   Ticket annulé : le marbre passe sous un voile plus épais (.84 → .92) et le
+   kicker comme le tampon deviennent corail : --danger 5,2 au pire (voile .84,
+   tout en haut), 5,5 à la hauteur réelle du kicker.
+   Lien à garder : --ivoire / --nuit 16,4 ; textes secondaires --ivoire-2 /
+   --carte 9,4 ; lien « Mes rendez-vous » --or-clair / --nuit 12,9.
    ========================================================================== */
 
 .rdv { --gap: var(--s-5); padding-top: var(--s-4); }
 
-.rdv__ticket--cancelled .ticket__kicker { color: var(--oxblood); }
-.rdv__ticket--past .ticket__kicker { color: var(--ink-2); }
-.rdv__ticket--past .ticket__title { padding-right: 0; }   /* pas de tampon sur un RDV passé */
+.rdv__ticket--cancelled .ticket__main {
+  background-image:
+    linear-gradient(180deg, rgb(4 6 13 / .84) 0, rgb(4 6 13 / .92) 72px, var(--ticket-bg) 168px),
+    url('../img/marbre.webp');
+}
+.rdv__ticket--cancelled .ticket__kicker { color: var(--danger); }
+.rdv__ticket--cancelled .ticket__stamp {
+  border-color: var(--danger);
+  color: var(--danger);
+  text-shadow: none;
+}
+.rdv__ticket--past .ticket__kicker { color: var(--ivoire-2); }
+
+/* Le tampon (placé en tête du ticket dans le HTML) flotte à droite du kicker
+   et du début du titre, au lieu de réserver 112 px sur toute la hauteur du
+   titre : un prénom long passe dessous, sur toute la largeur, sans être coupé
+   au milieu (« Maximilie-n » à 320 px). */
+.rdv__ticket .ticket__stamp {
+  position: relative;
+  top: auto;
+  right: auto;
+  float: right;
+  margin: 6px -2px 12px 12px;
+}
+.rdv__ticket .ticket__title { padding-right: 0; }
 
 .rdv__address {
   display: flex;
@@ -224,23 +369,30 @@
   gap: var(--s-2);
   line-height: 1.4;
 }
-.rdv__address > .icon { margin-top: 2px; color: var(--green); }
-.rdv__salon { display: block; font-weight: 700; }
+.rdv__address > .icon { margin-top: 2px; color: var(--or-clair); }
+.rdv__salon {
+  display: block;
+  color: var(--or-clair);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: .03em;
+}
 
 .rdv__actions { display: grid; gap: var(--s-2); margin-top: var(--s-2); }
 .rdv__actions .btn { white-space: normal; }
 
-.rdv__mine a { color: var(--green); font-weight: 650; }
+.rdv__mine a { color: var(--or-clair); font-weight: 650; }
 
 /* Lien du ticket à garder (seule clé du RDV hors de ce navigateur) */
 .rdv__keep { display: grid; gap: var(--s-3); padding-block: var(--s-4); }
 .rdv__keep-title { font-size: var(--fs-lg); }
-.rdv__keep-text { color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.45; }
+.rdv__keep-text { color: var(--ivoire-2); font-size: var(--fs-sm); line-height: 1.45; }
 .rdv__link {
   padding: var(--s-2) var(--s-3);
-  border: 1px dashed var(--line-2);
+  border: 1px dashed var(--filet-fort);
   border-radius: var(--r-sm);
-  background: var(--paper);
+  background: var(--nuit);
+  color: var(--ivoire);
   font-size: var(--fs-sm);
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -254,11 +406,11 @@
   display: flex;
   align-items: flex-start;
   gap: var(--s-2);
-  color: var(--ink-2);
+  color: var(--ivoire-2);
   font-size: var(--fs-sm);
   line-height: 1.45;
 }
-.rdv__install-text > .icon { margin-top: 1px; color: var(--green); }
+.rdv__install-text > .icon { margin-top: 1px; color: var(--or-clair); }
 
 /* Feuille « trop tard pour annuler » : numéro du salon bien lisible */
 .cancel-phone {
@@ -266,21 +418,25 @@
   align-items: center;
   gap: var(--s-2);
   margin-top: var(--s-3);
+  color: var(--ivoire);
   font-family: var(--font-display);
   font-size: var(--fs-xl);
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
 }
+.cancel-phone > .icon { color: var(--or-clair); }
 
 
 /* ==========================================================================
    6. Mes rendez-vous
+   Contrastes : date --ivoire / --carte 14,1 ; RDV annulé --ivoire-2 / --carte 9,4.
    ========================================================================== */
 
 .myrdv-page { --gap: var(--s-5); padding-top: var(--s-4); }
 .myrdv-page .section-title { margin-top: 0; }
 .myrdv-list { --gap: var(--s-3); }
 .myrdv__service { min-width: 0; }
-.myrdv__when { margin-top: var(--s-1); font-weight: 650; font-variant-numeric: tabular-nums; }
+.myrdv__when { margin-top: var(--s-1); color: var(--ivoire); font-weight: 650; font-variant-numeric: tabular-nums; }
 .myrdv--cancelled .myrdv__service,
-.myrdv--cancelled .myrdv__when { color: var(--ink-2); }
+.myrdv--cancelled .myrdv__when { color: var(--ivoire-2); }
 .myrdv--cancelled .myrdv__when { text-decoration: line-through; text-decoration-thickness: 1px; }

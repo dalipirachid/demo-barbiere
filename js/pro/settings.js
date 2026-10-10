@@ -6,6 +6,12 @@
  * rafraîchissements automatiques. Quitter l'écran avec des modifications non
  * enregistrées : main.js demande confirmation (onglets, liens) ; après un
  * Retour, la saisie est remise au prochain affichage.
+ *
+ * Exporte aussi les éditeurs des horaires et des prestations, partagés avec
+ * l'assistant de configuration (assistant.js) :
+ *   hoursState(), hoursFieldsHtml(), readHoursState(), checkHoursState(),
+ *   checkHoursForm(), changeRanges(), focusAfterRangeChange(), toggleHoursDay()
+ *   createServicesEditor()
  */
 
 import { html, render, icon, openSheet, confirmDialog, toast } from '../ui/dom.js';
@@ -15,9 +21,10 @@ import { setupInstall } from '../ui/pwa.js';
 import {
   store, isRemote, loadSalon, nav, bool, uid, textField, setFieldErrors, showError, loaderHtml,
   phoneText, bookingUrl, parsePrice, priceInput, formSnapshot, confirmDiscard,
+  copyBookingLink, shareBookingLink, canShare,
 } from './shared.js';
 
-const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+export const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const DURATIONS = [15, 20, 30, 45, 60, 75, 90];
 
 const NOTICE_OPTIONS = [[0, 'Aucun délai'], [30, '30 min'], [60, '1 h'], [120, '2 h'], [180, '3 h'],
@@ -57,204 +64,200 @@ function saveBar(section, label) {
     </div>`;
 }
 
-export function createSettingsView() {
-  let root = null;
-  let salon = null;
+/**
+ * Interrupteur « Afficher le blason » (salon.showCrest, §8 bis), Réglages et assistant.
+ * Le blason porte l'inscription PRIVATE BARBIÈRE : la barbière choisit de le montrer ou non.
+ */
+export function crestSwitchHtml(checked, label) {
+  return html`
+    <label class="switch pro-crest-switch">
+      <span class="switch__label">${label}
+        <span class="switch__hint">Le blason porte l’inscription « Private Barbière ». Sans lui, le nom du salon s’affiche en grand à sa place.</span></span>
+      <input class="switch__input" type="checkbox" role="switch" name="showCrest" ${checked ? 'checked' : ''}>
+      <span class="switch__track" aria-hidden="true"></span>
+    </label>`;
+}
+
+/* ==========================================================================
+   Éditeur des horaires (Réglages et assistant)
+   État : { '1': { open, ranges: [['09:00', '12:00'], …] }, … '7': … } (1 = lundi)
+   ========================================================================== */
+
+/**
+ * Horaires du salon → état de l'éditeur. Un jour fermé garde une plage
+ * proposée (9h – 19h), affichée seulement s'il est rouvert.
+ */
+export function hoursState(salon) {
+  const st = {};
+  for (let d = 1; d <= 7; d++) {
+    const ranges = ((salon && salon.hours && salon.hours[String(d)]) || []).map((r) => [r[0], r[1]]);
+    st[d] = { open: ranges.length > 0, ranges: ranges.length ? ranges : [['09:00', '19:00']] };
+  }
+  return st;
+}
+
+/** Les sept jours de l'éditeur (interrupteur ouvert / fermé, une ou deux plages). */
+export function hoursFieldsHtml(state) {
+  return html`
+    <div class="pro-hours" data-section="hours">
+      ${DAYS.map((name, i) => {
+        const wd = String(i + 1);
+        const day = state[wd];
+        return html`
+          <fieldset class="pro-hours__day" data-wd="${wd}">
+            <legend class="sr-only">${name}</legend>
+            <label class="switch">
+              <span class="switch__label">${name}
+                <span class="switch__hint">${day.open ? day.ranges.map((r) => `${r[0] ? fmtClock(r[0]) : '…'} – ${r[1] ? fmtClock(r[1]) : '…'}`).join(' · ') : 'Fermé'}</span></span>
+              <input class="switch__input" type="checkbox" role="switch" data-open ${day.open ? 'checked' : ''} aria-label="${name} : ouvert">
+              <span class="switch__track" aria-hidden="true"></span>
+            </label>
+            <div class="pro-hours__ranges" ${day.open ? '' : 'hidden'}>
+              ${day.ranges.map((r, k) => html`
+                <div class="pro-hours__range" data-range="${k}">
+                  <input class="field__input" type="time" step="300" data-from value="${r[0]}" aria-label="${name}, plage ${k + 1} : ouverture">
+                  <span class="pro-hours__sep" aria-hidden="true">à</span>
+                  <input class="field__input" type="time" step="300" data-to value="${r[1]}" aria-label="${name}, plage ${k + 1} : fermeture">
+                  ${k > 0 ? html`<button type="button" class="icon-btn icon-btn--sm" data-act="remove-range" aria-label="Retirer la 2e plage du ${name.toLowerCase()}">${icon('croix')}</button>` : html`<span class="pro-hours__spacer" aria-hidden="true"></span>`}
+                </div>`)}
+              ${day.ranges.length < 2 ? html`<button type="button" class="btn btn--ghost btn--sm pro-linkbtn" data-act="add-range">${icon('plus')}<span>Ajouter une 2e plage (après une pause)</span></button>` : ''}
+            </div>
+            <p class="field__error" data-err role="alert"></p>
+          </fieldset>`;
+      })}
+    </div>`;
+}
+
+/** Lit l'état saisi dans `host` (y compris les jours fermés, pour garder leurs heures). */
+export function readHoursState(host) {
+  const out = {};
+  for (const fs of host.querySelectorAll('[data-wd]')) {
+    const open = fs.querySelector('[data-open]').checked;
+    const ranges = [...fs.querySelectorAll('[data-range]')].map((r) => [
+      r.querySelector('[data-from]').value, r.querySelector('[data-to]').value,
+    ]);
+    out[fs.dataset.wd] = { open, ranges };
+  }
+  return out;
+}
+
+/**
+ * Contrôle de cohérence (pur).
+ * → { hours, errors } : hours prêt pour updateSalon (null s'il y a une erreur),
+ *   errors = { '2': 'message', … } jour par jour.
+ */
+export function checkHoursState(state) {
+  const hours = {};
+  const errors = {};
+  for (let d = 1; d <= 7; d++) {
+    const wd = String(d);
+    const day = state[wd];
+    if (!day) continue;
+    if (!day.open) {
+      hours[wd] = [];
+      continue;
+    }
+    const mins = day.ranges.map(([o, c]) => [minutesOf(o), minutesOf(c)]);
+    let msg = '';
+    if (mins.some(([o, c]) => !Number.isFinite(o) || !Number.isFinite(c))) msg = 'Indiquez l’heure d’ouverture et de fermeture.';
+    else if (mins.some(([o, c]) => c <= o)) msg = 'La fermeture doit être après l’ouverture.';
+    else {
+      mins.sort((a, b) => a[0] - b[0]);
+      if (mins.length === 2 && mins[1][0] < mins[0][1]) msg = 'Les deux plages se chevauchent : la 2e doit commencer après la fin de la 1re.';
+      else hours[wd] = mins.map(([o, c]) => [hhmm(o), hhmm(c)]);
+    }
+    if (msg) errors[wd] = msg;
+  }
+  return { hours: Object.keys(errors).length ? null : hours, errors };
+}
+
+/** Contrôle la saisie de `host` ; → horaires, ou null (erreurs affichées jour par jour, focus sur la 1re). */
+export function checkHoursForm(host) {
+  const { hours, errors } = checkHoursState(readHoursState(host));
+  let firstBad = null;
+  for (const fs of host.querySelectorAll('[data-wd]')) {
+    const msg = errors[fs.dataset.wd] || '';
+    fs.querySelector('[data-err]').textContent = msg;
+    if (msg && !firstBad) firstBad = fs;
+  }
+  if (firstBad) {
+    const input = firstBad.querySelector('input[type="time"]');
+    if (input) input.focus();
+    return null;
+  }
+  return hours;
+}
+
+/**
+ * Ajoute (act 'add-range', une heure après la fin de la 1re plage) ou retire
+ * ('remove-range') la 2e plage d'un jour. → nouvel état (pur).
+ */
+export function changeRanges(state, wd, act) {
+  const next = {};
+  for (const [k, v] of Object.entries(state)) next[k] = { open: v.open, ranges: v.ranges.map((r) => [r[0], r[1]]) };
+  const day = next[wd];
+  if (!day) return next;
+  if (act === 'add-range') {
+    const last = day.ranges[day.ranges.length - 1];
+    const end = minutesOf(last[1]);
+    const from = Number.isFinite(end) ? Math.min(end + 60, 23 * 60) : 14 * 60;
+    day.ranges.push([hhmm(from), hhmm(Math.min(from + 240, 23 * 60 + 55))]);
+  } else if (act === 'remove-range') {
+    day.ranges = day.ranges.slice(0, 1);
+  }
+  return next;
+}
+
+/** Après un ajout ou un retrait de plage (éditeur redessiné) : focus sur la nouvelle plage ou sur « Ajouter ». */
+export function focusAfterRangeChange(host, wd, act) {
+  const again = host.querySelector(`[data-wd="${wd}"]`);
+  if (!again) return;
+  const focusEl = act === 'add-range'
+    ? again.querySelector('[data-range="1"] [data-from]')
+    : again.querySelector('[data-act="add-range"]');
+  if (focusEl) focusEl.focus();
+}
+
+/** Interrupteur d'un jour basculé : ses plages s'affichent ou se masquent, le résumé suit. */
+export function toggleHoursDay(input) {
+  const fs = input.closest('[data-wd]');
+  if (!fs) return;
+  fs.querySelector('.pro-hours__ranges').hidden = !input.checked;
+  const hint = fs.querySelector('.switch__hint');
+  if (hint) {
+    hint.textContent = input.checked
+      ? [...fs.querySelectorAll('[data-range]')].map((r) => {
+        const o = r.querySelector('[data-from]').value;
+        const c = r.querySelector('[data-to]').value;
+        return `${o ? fmtClock(o) : '…'} – ${c ? fmtClock(c) : '…'}`;
+      }).join(' · ')
+      : 'Fermé';
+  }
+}
+
+/* ==========================================================================
+   Éditeur des prestations (Réglages et assistant)
+   ========================================================================== */
+
+/**
+ * Liste des prestations, modifiable sur place :
+ * ordre (flèches, enregistré aussitôt), ajout et modification (feuille),
+ * désactivation / réactivation. Les écritures passent par le Store : l'écran
+ * est redessiné par son refresh() (store.onChange → nav.reload).
+ *   host()           conteneur de la liste (redessiné à chaque changement d'ordre)
+ *   reload()         relecture des données après un échec d'enregistrement de l'ordre
+ *   heading          titre et consigne au-dessus de la liste (Réglages)
+ *   isExample(svc)   vrai → pastille « Exemple » (tarif de démonstration encore inchangé)
+ * → { setList(list), html(), render(), handleClick(target) → vrai si l'appui est traité }
+ */
+export function createServicesEditor({ host, reload = () => {}, heading = true, isExample = null }) {
   let services = [];
-  let seq = 0;
-  const dirty = { salon: false, hours: false, booking: false };
-  const install = setupInstall({ mode: 'pro' });
-  let offInstall = null;
 
-  const region = (name) => root && root.querySelector(`[data-region="${name}"]`);
-
-  /* — Salon — */
-
-  function salonHtml(s) {
+  function listHtml(list) {
     return html`
-      <h2 class="card__title">Le salon</h2>
-      <p class="card__meta">Ces informations s’affichent sur la page de réservation.</p>
-      <form class="stack pro-form pro-section__form" data-section="salon" novalidate>
-        ${textField({ name: 'name', label: 'Nom du salon', value: s.name, maxlength: 100, required: true, autocomplete: 'organization' })}
-        ${textField({ name: 'tagline', label: 'Accroche', value: s.tagline, optional: true, maxlength: 160, placeholder: 'Ex. : Barbière' })}
-        ${textField({ name: 'address', label: 'Adresse', value: s.address, optional: true, maxlength: 200, autocomplete: 'street-address' })}
-        ${textField({ name: 'city', label: 'Ville', value: s.city, optional: true, maxlength: 100, autocomplete: 'address-level2' })}
-        <div class="field-row">
-          ${textField({ name: 'phone', label: 'Téléphone', type: 'tel', inputmode: 'tel', value: phoneText(s.phone), optional: true, autocomplete: 'tel' })}
-          ${textField({ name: 'email', label: 'E-mail', type: 'email', inputmode: 'email', value: s.email, optional: true, maxlength: 120, autocomplete: 'email' })}
-        </div>
-        ${textField({ name: 'instagram', label: 'Instagram', value: s.instagram, optional: true, maxlength: 200, placeholder: '@identifiant ou adresse du profil' })}
-        ${textField({
-          name: 'notice', label: 'Message d’information aux clients', value: s.notice, optional: true, multiline: true, maxlength: 1000,
-          hint: 'Affiché en haut de la page de réservation (congés, fermeture exceptionnelle…). Laissez vide pour ne rien afficher.',
-          placeholder: 'Ex. : Le salon sera fermé du 20 au 27 octobre.',
-        })}
-      </form>
-      ${saveBar('salon', 'Enregistrer le salon')}`;
-  }
-
-  async function saveSalon(btn) {
-    const form = region('salon').querySelector('form');
-    const get = (n) => form.querySelector(`[name="${n}"]`).value;
-    const patch = {
-      name: get('name'), tagline: get('tagline'), address: get('address'), city: get('city'),
-      phone: get('phone'), email: get('email'), instagram: get('instagram'), notice: get('notice'),
-    };
-    const check = validateSalonPatch(patch);
-    if (!check.ok) {
-      setFieldErrors(form, check.errors);
-      return;
-    }
-    setFieldErrors(form, {}, { focus: false });
-    await runSave(btn, 'salon', async () => {
-      try {
-        await store.updateSalon(patch);
-      } catch (err) {
-        if (err && err.code === 'INVALID' && err.details && err.details.errors) {
-          setFieldErrors(form, err.details.errors);
-          return false;
-        }
-        throw err;
-      }
-      toast('Informations du salon enregistrées.', { type: 'success' });
-      return true;
-    });
-  }
-
-  /* — Horaires — */
-
-  function hoursFromSalon(s) {
-    const out = {};
-    for (let d = 1; d <= 7; d++) out[d] = ((s.hours && s.hours[String(d)]) || []).map((r) => [r[0], r[1]]);
-    return out;
-  }
-
-  /** Lit l'état saisi dans la section (y compris les jours fermés, pour garder les heures). */
-  function readHours() {
-    const out = {};
-    for (const fs of region('hours').querySelectorAll('[data-wd]')) {
-      const open = fs.querySelector('[data-open]').checked;
-      const ranges = [...fs.querySelectorAll('[data-range]')].map((r) => [
-        r.querySelector('[data-from]').value, r.querySelector('[data-to]').value,
-      ]);
-      out[fs.dataset.wd] = { open, ranges };
-    }
-    return out;
-  }
-
-  function hoursHtml(state) {
-    return html`
-      <h2 class="card__title">Horaires d’ouverture</h2>
-      <p class="card__meta">Les clients ne réservent que dans ces horaires. Depuis l’agenda, vous pouvez toujours ajouter un rendez-vous en dehors.</p>
-      <div class="pro-hours" data-section="hours">
-        ${DAYS.map((name, i) => {
-          const wd = String(i + 1);
-          const day = state[wd];
-          return html`
-            <fieldset class="pro-hours__day" data-wd="${wd}">
-              <legend class="sr-only">${name}</legend>
-              <label class="switch">
-                <span class="switch__label">${name}
-                  <span class="switch__hint">${day.open ? day.ranges.map((r) => `${r[0] ? fmtClock(r[0]) : '…'} – ${r[1] ? fmtClock(r[1]) : '…'}`).join(' · ') : 'Fermé'}</span></span>
-                <input class="switch__input" type="checkbox" role="switch" data-open ${day.open ? 'checked' : ''} aria-label="${name} : ouvert">
-                <span class="switch__track" aria-hidden="true"></span>
-              </label>
-              <div class="pro-hours__ranges" ${day.open ? '' : 'hidden'}>
-                ${day.ranges.map((r, k) => html`
-                  <div class="pro-hours__range" data-range="${k}">
-                    <input class="field__input" type="time" step="300" data-from value="${r[0]}" aria-label="${name}, plage ${k + 1} : ouverture">
-                    <span class="pro-hours__sep" aria-hidden="true">à</span>
-                    <input class="field__input" type="time" step="300" data-to value="${r[1]}" aria-label="${name}, plage ${k + 1} : fermeture">
-                    ${k > 0 ? html`<button type="button" class="icon-btn icon-btn--sm" data-act="remove-range" aria-label="Retirer la 2e plage du ${name.toLowerCase()}">${icon('croix')}</button>` : html`<span class="pro-hours__spacer" aria-hidden="true"></span>`}
-                  </div>`)}
-                ${day.ranges.length < 2 ? html`<button type="button" class="btn btn--ghost btn--sm pro-linkbtn" data-act="add-range">${icon('plus')}<span>Ajouter une 2e plage (après une pause)</span></button>` : ''}
-              </div>
-              <p class="field__error" data-err role="alert"></p>
-            </fieldset>`;
-        })}
-      </div>
-      ${saveBar('hours', 'Enregistrer les horaires')}`;
-  }
-
-  function renderHours(state) {
-    render(region('hours'), hoursHtml(state));
-  }
-
-  function stateFromHours(hours) {
-    const st = {};
-    for (let d = 1; d <= 7; d++) st[d] = { open: hours[d].length > 0, ranges: hours[d].length ? hours[d] : [['09:00', '19:00']] };
-    return st;
-  }
-
-  /** Contrôle de cohérence ; → { hours } ou null (erreurs affichées jour par jour). */
-  function checkHours() {
-    const state = readHours();
-    const hours = {};
-    let firstBad = null;
-    for (const fs of region('hours').querySelectorAll('[data-wd]')) {
-      const { open, ranges } = state[fs.dataset.wd];
-      const errEl = fs.querySelector('[data-err]');
-      let msg = '';
-      if (open) {
-        const mins = ranges.map(([o, c]) => [minutesOf(o), minutesOf(c)]);
-        if (mins.some(([o, c]) => !Number.isFinite(o) || !Number.isFinite(c))) msg = 'Indiquez l’heure d’ouverture et de fermeture.';
-        else if (mins.some(([o, c]) => c <= o)) msg = 'La fermeture doit être après l’ouverture.';
-        else {
-          mins.sort((a, b) => a[0] - b[0]);
-          if (mins.length === 2 && mins[1][0] < mins[0][1]) msg = 'Les deux plages se chevauchent : la 2e doit commencer après la fin de la 1re.';
-          else hours[fs.dataset.wd] = mins.map(([o, c]) => [hhmm(o), hhmm(c)]);
-        }
-      } else {
-        hours[fs.dataset.wd] = [];
-      }
-      errEl.textContent = msg;
-      if (msg && !firstBad) firstBad = fs;
-    }
-    if (firstBad) {
-      const input = firstBad.querySelector('input[type="time"]');
-      if (input) input.focus();
-      return null;
-    }
-    return hours;
-  }
-
-  async function saveHours(btn) {
-    const hours = checkHours();
-    if (!hours) return;
-    await runSave(btn, 'hours', async () => {
-      await store.updateSalon({ hours });
-      toast('Horaires enregistrés.', { type: 'success' });
-      return true;
-    });
-  }
-
-  function onHoursAction(act, btn) {
-    const state = readHours();
-    const fs = btn.closest('[data-wd]');
-    const wd = fs.dataset.wd;
-    if (act === 'add-range') {
-      const last = state[wd].ranges[state[wd].ranges.length - 1];
-      const end = minutesOf(last[1]);
-      const from = Number.isFinite(end) ? Math.min(end + 60, 23 * 60) : 14 * 60;
-      state[wd].ranges.push([hhmm(from), hhmm(Math.min(from + 240, 23 * 60 + 55))]);
-    } else if (act === 'remove-range') {
-      state[wd].ranges = state[wd].ranges.slice(0, 1);
-    }
-    renderHours(state);
-    markDirty('hours');
-    const again = region('hours').querySelector(`[data-wd="${wd}"]`);
-    const focusEl = act === 'add-range'
-      ? again.querySelector('[data-range="1"] [data-from]')
-      : again.querySelector('[data-act="add-range"]');
-    if (focusEl) focusEl.focus();
-  }
-
-  /* — Prestations — */
-
-  function servicesHtml(list) {
-    return html`
-      <h2 class="card__title">Prestations</h2>
-      <p class="card__meta">L’ordre ci-dessous est celui de la page de réservation. Les tarifs de démonstration sont à confirmer.</p>
+      ${heading ? html`
+        <h2 class="card__title">Prestations</h2>
+        <p class="card__meta">L’ordre ci-dessous est celui de la page de réservation. Les tarifs de démonstration sont à confirmer.</p>` : ''}
       <ul class="list pro-services">
         ${list.map((s, i) => html`
           <li class="pro-svc${s.active ? '' : ' is-inactive'}">
@@ -262,6 +265,7 @@ export function createSettingsView() {
               <span class="list__main">
                 <span class="list__title">${s.name}</span>
                 <span class="list__meta">${s.category ? `${s.category} · ` : ''}${fmtDuration(s.durationMin)} · ${fmtPrice(s.priceCents)}</span>
+                ${s.active && isExample && isExample(s) ? html`<span class="badge pro-badge-example">Exemple</span>` : ''}
               </span>
               ${s.active ? '' : html`<span class="badge">Désactivée</span>`}
               ${icon('crayon')}
@@ -275,6 +279,22 @@ export function createSettingsView() {
       <button type="button" class="btn btn--block" data-act="add-service">${icon('plus')}<span>Ajouter une prestation</span></button>`;
   }
 
+  /** Redessine la liste ; le focus d'un bouton de la liste survit au rafraîchissement. */
+  function renderList() {
+    const el = host();
+    if (!el) return;
+    const active = document.activeElement;
+    const focusSel = active && el.contains(active)
+      ? (active.dataset.move ? `[data-move="${active.dataset.move}"][data-id="${CSS.escape(active.dataset.id)}"]`
+        : active.dataset.svc ? `[data-svc="${CSS.escape(active.dataset.svc)}"]` : '')
+      : '';
+    render(el, listHtml(services));
+    if (focusSel) {
+      const again = el.querySelector(focusSel);
+      if (again && !again.disabled) again.focus({ preventScroll: true });
+    }
+  }
+
   async function moveService(id, dir) {
     const i = services.findIndex((s) => s.id === id);
     const j = i + dir;
@@ -282,9 +302,10 @@ export function createSettingsView() {
     const list = services.slice();
     [list[i], list[j]] = [list[j], list[i]];
     services = list;
-    render(region('services'), servicesHtml(services));
-    const again = region('services').querySelector(`[data-move="${dir}"][data-id="${CSS.escape(id)}"]`);
-    const other = region('services').querySelector(`[data-move="${-dir}"][data-id="${CSS.escape(id)}"]`);
+    const el = host();
+    render(el, listHtml(services));
+    const again = el.querySelector(`[data-move="${dir}"][data-id="${CSS.escape(id)}"]`);
+    const other = el.querySelector(`[data-move="${-dir}"][data-id="${CSS.escape(id)}"]`);
     if (again && !again.disabled) again.focus();
     else if (other) other.focus();
     try {
@@ -292,7 +313,7 @@ export function createSettingsView() {
       toast('Ordre des prestations enregistré.', { type: 'success', duration: 2000 });
     } catch (err) {
       showError(err);
-      load();
+      reload();
     }
   }
 
@@ -424,6 +445,142 @@ export function createSettingsView() {
     }
   }
 
+  return {
+    setList(list) {
+      services = list;
+    },
+    html() {
+      return listHtml(services);
+    },
+    render: renderList,
+    /** Appui dans la liste : modifier, déplacer, ajouter. → vrai si l'appui a été traité. */
+    handleClick(t) {
+      const el = host();
+      if (!el || !el.contains(t)) return false;
+      const svcBtn = t.closest('[data-svc]');
+      if (svcBtn) {
+        openServiceSheet(services.find((s) => s.id === svcBtn.dataset.svc));
+        return true;
+      }
+      const mv = t.closest('[data-move]');
+      if (mv) {
+        moveService(mv.dataset.id, Number(mv.dataset.move));
+        return true;
+      }
+      if (t.closest('[data-act="add-service"]')) {
+        openServiceSheet(null);
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
+export function createSettingsView() {
+  let root = null;
+  let salon = null;
+  let seq = 0;
+  const dirty = { salon: false, hours: false, booking: false };
+  const install = setupInstall({ mode: 'pro' });
+  let offInstall = null;
+
+  const region = (name) => root && root.querySelector(`[data-region="${name}"]`);
+
+  /* — Salon — */
+
+  function salonHtml(s) {
+    return html`
+      <div class="pro-salonhead">
+        <div class="pro-salonhead__text">
+          <h2 class="card__title">Le salon</h2>
+          <p class="card__meta">Ces informations s’affichent sur la page de réservation.</p>
+        </div>
+        <a class="btn btn--sm" href="#/bienvenue">${icon('reglages')}<span>Relancer l’assistant</span></a>
+      </div>
+      <form class="stack pro-form pro-section__form" data-section="salon" novalidate>
+        ${textField({ name: 'name', label: 'Nom du salon', value: s.name, maxlength: 100, required: true, autocomplete: 'organization' })}
+        ${textField({ name: 'tagline', label: 'Accroche', value: s.tagline, optional: true, maxlength: 160, placeholder: 'Ex. : Barbière' })}
+        ${crestSwitchHtml(s.showCrest !== false, 'Afficher le blason sur ma page de réservation')}
+        ${textField({ name: 'address', label: 'Adresse', value: s.address, optional: true, maxlength: 200, autocomplete: 'street-address' })}
+        ${textField({ name: 'city', label: 'Ville', value: s.city, optional: true, maxlength: 100, autocomplete: 'address-level2' })}
+        <div class="field-row">
+          ${textField({ name: 'phone', label: 'Téléphone', type: 'tel', inputmode: 'tel', value: phoneText(s.phone), optional: true, autocomplete: 'tel' })}
+          ${textField({ name: 'email', label: 'E-mail', type: 'email', inputmode: 'email', value: s.email, optional: true, maxlength: 120, autocomplete: 'email' })}
+        </div>
+        ${textField({ name: 'instagram', label: 'Instagram', value: s.instagram, optional: true, maxlength: 200, placeholder: '@identifiant ou adresse du profil' })}
+        ${textField({
+          name: 'notice', label: 'Message d’information aux clients', value: s.notice, optional: true, multiline: true, maxlength: 1000,
+          hint: 'Affiché en haut de la page de réservation (congés, fermeture exceptionnelle…). Laissez vide pour ne rien afficher.',
+          placeholder: 'Ex. : Le salon sera fermé du 20 au 27 octobre.',
+        })}
+      </form>
+      ${saveBar('salon', 'Enregistrer le salon')}`;
+  }
+
+  async function saveSalon(btn) {
+    const form = region('salon').querySelector('form');
+    const get = (n) => form.querySelector(`[name="${n}"]`).value;
+    const patch = {
+      name: get('name'), tagline: get('tagline'), address: get('address'), city: get('city'),
+      phone: get('phone'), email: get('email'), instagram: get('instagram'), notice: get('notice'),
+      showCrest: form.querySelector('[name="showCrest"]').checked,
+    };
+    const check = validateSalonPatch(patch);
+    if (!check.ok) {
+      setFieldErrors(form, check.errors);
+      return;
+    }
+    setFieldErrors(form, {}, { focus: false });
+    await runSave(btn, 'salon', async () => {
+      try {
+        await store.updateSalon(patch);
+      } catch (err) {
+        if (err && err.code === 'INVALID' && err.details && err.details.errors) {
+          setFieldErrors(form, err.details.errors);
+          return false;
+        }
+        throw err;
+      }
+      toast('Informations du salon enregistrées.', { type: 'success' });
+      return true;
+    });
+  }
+
+  /* — Horaires (éditeur partagé, voir hoursFieldsHtml) — */
+
+  function hoursHtml(state) {
+    return html`
+      <h2 class="card__title">Horaires d’ouverture</h2>
+      <p class="card__meta">Les clients ne réservent que dans ces horaires. Depuis l’agenda, vous pouvez toujours ajouter un rendez-vous en dehors.</p>
+      ${hoursFieldsHtml(state)}
+      ${saveBar('hours', 'Enregistrer les horaires')}`;
+  }
+
+  function renderHours(state) {
+    render(region('hours'), hoursHtml(state));
+  }
+
+  async function saveHours(btn) {
+    const hours = checkHoursForm(region('hours'));
+    if (!hours) return;
+    await runSave(btn, 'hours', async () => {
+      await store.updateSalon({ hours });
+      toast('Horaires enregistrés.', { type: 'success' });
+      return true;
+    });
+  }
+
+  function onHoursAction(act, btn) {
+    const wd = btn.closest('[data-wd]').dataset.wd;
+    renderHours(changeRanges(readHoursState(region('hours')), wd, act));
+    markDirty('hours');
+    focusAfterRangeChange(region('hours'), wd, act);
+  }
+
+  /* — Prestations (éditeur partagé, voir createServicesEditor) — */
+
+  const servicesEditor = createServicesEditor({ host: () => region('services'), reload: () => load() });
+
   /* — Réservation en ligne — */
 
   function bookingHtml(s) {
@@ -480,33 +637,14 @@ export function createSettingsView() {
       </div>
       <div class="pro-actions-row">
         <button type="button" class="btn btn--primary" data-act="copy">${icon('coche')}<span>Copier le lien</span></button>
-        ${typeof navigator.share === 'function' ? html`<button type="button" class="btn" data-act="share">${icon('partage')}<span>Partager…</span></button>` : ''}
+        ${canShare() ? html`<button type="button" class="btn" data-act="share">${icon('partage')}<span>Partager…</span></button>` : ''}
         <a class="btn btn--ghost" href="${url}" target="_blank" rel="noopener">Voir la page</a>
       </div>`;
   }
 
-  async function copyLink() {
-    const url = bookingUrl();
-    try {
-      await navigator.clipboard.writeText(url);
-      toast('Lien copié : collez-le où vous voulez.', { type: 'success' });
-      return;
-    } catch { /* presse-papiers indisponible : repli ci-dessous */ }
-    const input = region('share').querySelector('[data-url]');
-    input.focus();
-    input.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch { ok = false; }
-    toast(ok ? 'Lien copié.' : 'Le lien est sélectionné : copiez-le avec un appui long.', { type: ok ? 'success' : 'info' });
-  }
-
-  async function shareLink() {
-    try {
-      await navigator.share({ title: salon ? salon.name : 'Prendre rendez-vous', text: 'Prenez rendez-vous en ligne :', url: bookingUrl() });
-    } catch (err) {
-      if (err && err.name !== 'AbortError') toast('Partage impossible sur cet appareil. Copiez plutôt le lien.', { type: 'error' });
-    }
-  }
+  // Copier / partager : même code que l'assistant (shared.js).
+  const copyLink = () => copyBookingLink(region('share') && region('share').querySelector('[data-url]'));
+  const shareLink = () => shareBookingLink(salon);
 
   function installHtml() {
     const state = install.state;
@@ -569,7 +707,7 @@ export function createSettingsView() {
         .map((el) => [el.name, el.type === 'checkbox' ? el.checked : el.value]));
     };
     if (dirty.salon) out.salon = values('salon');
-    if (dirty.hours && region('hours') && region('hours').querySelector('[data-wd]')) out.hours = readHours();
+    if (dirty.hours && region('hours') && region('hours').querySelector('[data-wd]')) out.hours = readHoursState(region('hours'));
     if (dirty.booking) out.booking = values('booking');
     for (const k of Object.keys(out)) if (!out[k]) delete out[k];
     return Object.keys(out).length ? out : null;
@@ -583,14 +721,7 @@ export function createSettingsView() {
       const [s, list] = await Promise.all([loadSalon(), store.listServices({ includeInactive: true })]);
       if (mine !== seq || !root) return;
       salon = s;
-      services = list;
-      // Le focus d'un bouton de la liste des prestations survit au rafraîchissement.
-      const active = document.activeElement;
-      const svcRegion = region('services');
-      const focusSel = active && svcRegion.contains(active)
-        ? (active.dataset.move ? `[data-move="${active.dataset.move}"][data-id="${CSS.escape(active.dataset.id)}"]`
-          : active.dataset.svc ? `[data-svc="${CSS.escape(active.dataset.svc)}"]` : '')
-        : '';
+      servicesEditor.setList(list);
       // Saisie gardée d'un précédent passage : remise telle quelle, toujours « non enregistrée ».
       const kept = draft || {};
       draft = null;
@@ -599,14 +730,11 @@ export function createSettingsView() {
         if (kept.salon) markDirty('salon');
       }
       if (!dirty.hours) {
-        renderHours(kept.hours || stateFromHours(hoursFromSalon(s)));
+        renderHours(kept.hours || hoursState(s));
         if (kept.hours) markDirty('hours');
       }
-      render(svcRegion, servicesHtml(services));
-      if (focusSel) {
-        const again = svcRegion.querySelector(focusSel);
-        if (again && !again.disabled) again.focus({ preventScroll: true });
-      }
+      // Le focus d'un bouton de la liste des prestations survit au rafraîchissement.
+      servicesEditor.render();
       if (!dirty.booking) {
         const b = kept.booking;
         render(region('booking'), bookingHtml(b ? {
@@ -633,16 +761,7 @@ export function createSettingsView() {
   function onClick(e) {
     const t = e.target instanceof Element ? e.target : null;
     if (!t) return;
-    const svcBtn = t.closest('[data-svc]');
-    if (svcBtn) {
-      openServiceSheet(services.find((s) => s.id === svcBtn.dataset.svc));
-      return;
-    }
-    const mv = t.closest('[data-move]');
-    if (mv) {
-      moveService(mv.dataset.id, Number(mv.dataset.move));
-      return;
-    }
+    if (servicesEditor.handleClick(t)) return;
     const btn = t.closest('[data-act]');
     if (!btn) return;
     const act = btn.dataset.act;
@@ -651,7 +770,6 @@ export function createSettingsView() {
     else if (act === 'save-hours') saveHours(btn);
     else if (act === 'save-booking') saveBooking(btn);
     else if (act === 'add-range' || act === 'remove-range') onHoursAction(act, btn);
-    else if (act === 'add-service') openServiceSheet(null);
     else if (act === 'copy') copyLink();
     else if (act === 'share') shareLink();
     else if (act === 'install') install.prompt();
@@ -666,20 +784,7 @@ export function createSettingsView() {
     if (!section) return;
     markDirty(section.dataset.section);
     // Ouvrir / fermer un jour : on affiche ou masque ses plages.
-    if (t.matches('[data-open]')) {
-      const fs = t.closest('[data-wd]');
-      fs.querySelector('.pro-hours__ranges').hidden = !t.checked;
-      const hint = fs.querySelector('.switch__hint');
-      if (hint) {
-        hint.textContent = t.checked
-          ? [...fs.querySelectorAll('[data-range]')].map((r) => {
-            const o = r.querySelector('[data-from]').value;
-            const c = r.querySelector('[data-to]').value;
-            return `${o ? fmtClock(o) : '…'} – ${c ? fmtClock(c) : '…'}`;
-          }).join(' · ')
-          : 'Fermé';
-      }
-    }
+    if (t.matches('[data-open]')) toggleHoursDay(t);
   }
 
   async function logout() {

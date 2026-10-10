@@ -1,5 +1,5 @@
 {
-  "name": "Réserver — [À COMPLÉTER] Nom du salon",
+  "name": "Réserver un rendez-vous",
   "short_name": "Réserver",
   "description": "Prenez rendez-vous chez votre barbière en quelques secondes, sans créer de compte.",
   "lang": "fr",
@@ -7,8 +7,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#F4EEE4",
-  "theme_color": "#23413A",
+  "background_color": "#070B18",
+  "theme_color": "#070B18",
   "categories": ["lifestyle", "beauty"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -9,7 +9,13 @@
 import { todayYMD, addDaysYMD, weekdayISO, zonedToUtc, minutesOf, hhmm } from '../core/dates.js';
 import { normalizePhone } from '../core/validate.js';
 
-export const DEMO_VERSION = 1;
+// Version de la base de démonstration : l'augmenter quand le jeu de données change
+// (une base enregistrée d'une autre version est régénérée au chargement ; les
+// réglages saisis par l'utilisatrice sont repris, voir local-store.js).
+// 2 : salon renommé d'après le blason (2026-10-10).
+// 3 : plus de nom supposé (« [À COMPLÉTER] Nom du salon », la barbière le choisit
+//     elle-même) ; champs showCrest et setupDone (§8 bis).
+export const DEMO_VERSION = 3;
 
 const MINUTE = 60_000;
 const HOUR = 3_600_000;
@@ -40,6 +46,8 @@ export function demoSalon() {
     cancelLimitHours: 2,
     bookingEnabled: true,
     notice: '',
+    showCrest: true,     // blason affiché sur la page de réservation
+    setupDone: false,    // assistant de configuration pas encore terminé
   };
 }
 
@@ -60,10 +68,14 @@ export function demoServices() {
   }));
 }
 
-// Fréquence relative de chaque prestation (même ordre que SERVICES).
+// Fréquence relative de chaque prestation (même ordre que SERVICES) ; une
+// prestation créée par l'utilisatrice prend DEFAULT_WEIGHT.
 const SERVICE_WEIGHTS = [30, 28, 8, 10, 13, 4, 7];
+const WEIGHT_BY_ID = new Map(SERVICES.map(([id], i) => [id, SERVICE_WEIGHTS[i]]));
+const DEFAULT_WEIGHT = 10;
 
-// Clientèle fictive : [prénom, nom, téléphone, e-mail, prestation habituelle, note]
+// Clientèle fictive : [prénom, nom, téléphone, e-mail, prestation habituelle
+// (indice dans SERVICES), note]
 const CLIENTS = [
   ['Karim', 'Benali', '06 39 98 00 01', 'karim.benali@example.com', 1, 'Dégradé à blanc, dessus aux ciseaux.'],
   ['Mamadou', 'Diallo', '06 39 98 00 02', '', 4, ''],
@@ -152,15 +164,18 @@ function pickClient(rand, usedToday, lastVisit, d) {
   return pool.length ? pool[Math.floor(rand() * pool.length)] : -1;
 }
 
-function pickService(rand, services, fav, maxDur) {
+/** Indice d'une prestation qui tient dans `maxDur` (la préférée du client de préférence) ; -1 sinon. */
+function pickService(rand, plan, fav, maxDur) {
+  const { services, weights } = plan;
   const fits = services.map((s, i) => (s.durationMin <= maxDur ? i : -1)).filter((i) => i >= 0);
   if (!fits.length) return -1;
   if (fits.includes(fav) && rand() < 0.75) return fav;
-  return fits[weightedIndex(rand, fits.map((i) => SERVICE_WEIGHTS[i]))];
+  return fits[weightedIndex(rand, fits.map((i) => weights[i]))];
 }
 
 /** Planning d'un jour : [{ startMin, svcIndex, clientIndex }] sans chevauchement. */
-function planDay(rand, services, intervals, rate, d, lastVisit) {
+function planDay(rand, plan, intervals, rate, d, lastVisit) {
+  const { services, favs } = plan;
   const used = new Set();
   const items = [];
   for (const [open, close] of intervals) {
@@ -172,7 +187,7 @@ function planDay(rand, services, intervals, rate, d, lastVisit) {
       }
       const ci = pickClient(rand, used, lastVisit, d);
       if (ci < 0) break;
-      const si = pickService(rand, services, CLIENTS[ci][4], close - cursor);
+      const si = pickService(rand, plan, favs[ci], close - cursor);
       if (si < 0) break;
       items.push({ startMin: cursor, svcIndex: si, clientIndex: ci });
       used.add(ci);
@@ -196,14 +211,24 @@ function occupancy(items, services, intervals) {
  * → { version, seedDay, seededAt, salon, services, clients, appointments, blocks }
  * Rendez-vous stockés « à plat » : { id, token, clientId, serviceId, serviceName,
  * priceCents, start, end, status, source, note, createdAt, cancelledAt }.
+ * `keep` : salon et prestations saisis par l'utilisatrice, repris tels quels
+ * (déjà validés) ; clients, rendez-vous et blocages sont générés pour eux
+ * (horaires du salon, prestations actives).
  */
-export function buildSeed(now = new Date()) {
+export function buildSeed(now = new Date(), keep = {}) {
   const nowDate = now instanceof Date ? now : new Date(now);
   const nowMs = nowDate.getTime();
-  const salon = demoSalon();
+  const salon = keep.salon || demoSalon();
   const tz = salon.timezone;
-  const services = demoServices();
+  const services = keep.services || demoServices();
   const today = todayYMD(tz, nowDate);
+  // Prestations proposées au planning : actives, dans l'ordre d'affichage.
+  const active = services.filter((s) => s.active !== false).sort((a, b) => a.position - b.position);
+  const plan = {
+    services: active,
+    weights: active.map((s) => WEIGHT_BY_ID.get(s.id) ?? DEFAULT_WEIGHT),
+    favs: CLIENTS.map((c) => active.findIndex((s) => s.id === SERVICES[c[4]][0])),
+  };
   const rand = mulberry32(hashString(`barbiere-demo-${today}`));
   const iso = (ms) => new Date(ms).toISOString();
 
@@ -252,18 +277,18 @@ export function buildSeed(now = new Date()) {
       let best = null;
       for (let attempt = 0; attempt < 24; attempt++) {
         const lv = new Map(lastVisit);
-        const plan = planDay(rand, services, intervals, fillRate(0), d, lv);
-        const gap = Math.abs(occupancy(plan, services, intervals) - 2 / 3);
-        if (!best || gap < best.gap) best = { plan, lv, gap };
+        const day = planDay(rand, plan, intervals, fillRate(0), d, lv);
+        const gap = Math.abs(occupancy(day, active, intervals) - 2 / 3);
+        if (!best || gap < best.gap) best = { day, lv, gap };
       }
-      items = best.plan;
+      items = best.day;
       for (const [k, v] of best.lv) lastVisit.set(k, v);
     } else {
-      items = planDay(rand, services, intervals, fillRate(d), d, lastVisit);
+      items = planDay(rand, plan, intervals, fillRate(d), d, lastVisit);
     }
 
     for (const it of items) {
-      const svc = services[it.svcIndex];
+      const svc = active[it.svcIndex];
       const client = clients[it.clientIndex];
       const startMs = zonedToUtc(ymd, hhmm(it.startMin), tz).getTime();
       const endMs = startMs + svc.durationMin * MINUTE;

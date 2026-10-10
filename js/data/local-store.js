@@ -6,10 +6,10 @@ import { BookingError } from '../core/errors.js';
 import { todayYMD, addDaysYMD, toMs } from '../core/dates.js';
 import { validateSlot, occupiesSlot } from '../core/slots.js';
 import {
-  validateContact, validateClientPatch, validateService, validateSalonPatch,
+  validateContact, validateClientPatch, validateService, validateSalonPatch, normalizeHours,
   cleanMultiline, cleanText, compareClientNames, parseClientSearch, clientMatches,
 } from '../core/validate.js';
-import { buildSeed, DEMO_VERSION } from './seed.js';
+import { buildSeed, demoSalon, DEMO_VERSION } from './seed.js';
 
 export const DEMO_KEY = 'barbiere-demo-v1';
 
@@ -88,6 +88,31 @@ function requestIdOrThrow(v) {
   return String(v).toLowerCase();
 }
 
+/** Fiche du salon telle que l'écran la lit : champs récents absents → défaut (§8 bis). */
+function toSalon(salon) {
+  return { ...salon, showCrest: salon.showCrest !== false, setupDone: salon.setupDone === true };
+}
+
+/**
+ * Réglages saisis par l'utilisatrice dans une ancienne base (drapeau `edited`),
+ * à reprendre lors d'une régénération ; null s'il n'y en a pas ou s'ils sont illisibles.
+ * Les champs apparus depuis prennent la valeur de demoSalon().
+ */
+function keptSettings(old) {
+  if (!old || !old.edited || !old.salon || typeof old.salon !== 'object' || !Array.isArray(old.services)) return null;
+  const defaults = demoSalon();
+  const salon = { ...defaults, ...old.salon };
+  salon.hours = normalizeHours(salon.hours) || defaults.hours;
+  try {
+    new Intl.DateTimeFormat('fr-FR', { timeZone: salon.timezone });
+  } catch {
+    salon.timezone = defaults.timezone;
+  }
+  const services = old.services.filter((s) => s && typeof s === 'object' && s.id && s.name
+    && Number.isInteger(s.durationMin) && s.durationMin > 0 && Number.isInteger(s.priceCents));
+  return { salon, services };
+}
+
 // — Fabrique —————————————————————————————————————————————————————————
 
 /**
@@ -124,6 +149,23 @@ export function createLocalStore({
     return addDaysYMD(db.seedDay, limit) >= today;
   }
 
+  /**
+   * Nouvelle base de démonstration, relative à maintenant. Si l'ancienne porte des
+   * réglages saisis par l'utilisatrice (salon, prestations), ils sont gardés : seuls
+   * clients, rendez-vous et blocages sont régénérés. resetDemo() repart de zéro.
+   */
+  function freshBase(old) {
+    const keep = keptSettings(old);
+    if (keep) {
+      try {
+        return { ...buildSeed(nowDate(), keep), edited: true };
+      } catch (err) {
+        console.error(err); // réglages inutilisables : base de démonstration d'origine
+      }
+    }
+    return buildSeed(nowDate());
+  }
+
   function persist(db) {
     cache = db;
     if (!storageOk) return;
@@ -141,19 +183,20 @@ export function createLocalStore({
       let readable = true;
       try { raw = storage.getItem(key); } catch { readable = false; storageOk = false; }
       if (readable) {
+        let old = null;
         if (raw) {
           try {
-            const db = JSON.parse(raw);
-            if (isUsable(db)) { cache = db; return clone(db); }
+            old = JSON.parse(raw);
+            if (isUsable(old)) { cache = old; return clone(old); }
           } catch { /* base illisible : régénérée ci-dessous */ }
         }
-        const db = buildSeed(nowDate());
+        const db = freshBase(old);
         persist(db);
         return clone(db);
       }
     }
     if (cache && isUsable(cache)) return clone(cache);
-    const db = buildSeed(nowDate());
+    const db = freshBase(cache);
     persist(db);
     return clone(db);
   }
@@ -247,7 +290,7 @@ export function createLocalStore({
     // — Public —
 
     getSalon() {
-      return read((db) => db.salon);
+      return read((db) => toSalon(db.salon));
     },
 
     listServices({ includeInactive = false } = {}) {
@@ -545,17 +588,22 @@ export function createLocalStore({
       });
     },
 
+    // Réglages (salon et prestations) : drapeau `edited`, pour qu'ils survivent aux
+    // régénérations automatiques de la démo (freshBase).
+
     updateSalon(patch = {}) {
       return write((db) => {
         const check = validateSalonPatch(patch);
         if (!check.ok) throw new BookingError('INVALID', { errors: check.errors });
         Object.assign(db.salon, check.value);
-        return db.salon;
+        db.edited = true;
+        return toSalon(db.salon);
       });
     },
 
     saveService(service = {}) {
       return write((db) => {
+        db.edited = true;
         const isUpdate = !!service.id;
         const check = validateService(service, { partial: isUpdate });
         if (!check.ok) throw new BookingError('INVALID', { errors: check.errors });
@@ -577,11 +625,13 @@ export function createLocalStore({
         const s = findService(db, id);
         if (!s) throw new BookingError('NOT_FOUND');
         s.active = false;
+        db.edited = true;
       });
     },
 
     reorderServices(ids = []) {
       return write((db) => {
+        db.edited = true;
         const order = [...ids, ...db.services
           .slice().sort((a, b) => a.position - b.position)
           .map((s) => s.id)
@@ -610,7 +660,7 @@ export function createLocalStore({
 
     // — Spécifique à la démo —
 
-    /** Réinitialise la base de démonstration (relative à maintenant). */
+    /** Réinitialise la base de démonstration (relative à maintenant), réglages compris. */
     resetDemo() {
       return (async () => {
         if (latency > 0) await sleep(latency);

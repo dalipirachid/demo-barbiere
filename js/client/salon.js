@@ -1,17 +1,35 @@
-// Infos pratiques du salon : statut d'ouverture, libellés de jours, liens
-// (itinéraire, appel, Instagram) et titre de la page.
-// Les liens ne sont construits qu'à partir de valeurs vérifiées.
+// Infos pratiques du salon : nom affichable, statut d'ouverture, libellés de
+// jours, liens (itinéraire, appel, Instagram) et titre de la page.
+// Les liens ne sont construits qu'à partir de valeurs vérifiées : un champ
+// encore « [À COMPLÉTER] » s'affiche comme tel (démo) mais ne produit aucun lien.
 
 import { html } from '../ui/dom.js';
 import { DEFAULT_TZ, zonedParts, todayYMD, addDaysYMD, fmtClock, fmtDayLong } from '../core/dates.js';
 import { dayIntervals } from '../core/slots.js';
-import { normalizePhone, fmtPhone } from '../core/validate.js';
+import { normalizePhone, fmtPhone, cleanText } from '../core/validate.js';
 import { errorMessage } from '../core/errors.js';
+import { PLACEHOLDER, isPlaceholder, displayName } from '../core/setup.js';
 
-export const TODO_MARK = '[À COMPLÉTER]';
+export const TODO_MARK = PLACEHOLDER;
+
+/** Nom générique de l'appli tant que le salon n'a pas de nom (manifeste, titres d'onglet). */
+export const APP_TITLE = 'Réserver un rendez-vous';
 
 export function tzOf(salon) {
   return (salon && salon.timezone) || DEFAULT_TZ;
+}
+
+/** Blason affiché sur la page de réservation (valeur absente : oui, §8 bis). */
+export function showsCrest(salon) {
+  return !(salon && salon.showCrest === false);
+}
+
+/**
+ * Nom à écrire sur l'enseigne ou le ticket : le nom du salon, ou, tant que la
+ * barbière ne l'a pas choisi, le marqueur à compléter (surligné par txt()).
+ */
+export function salonTitle(salon) {
+  return displayName(salon) || cleanText(salon && salon.name) || `${PLACEHOLDER} Nom du salon`;
 }
 
 /** Texte du salon à afficher : une information encore à fournir est surlignée. */
@@ -26,14 +44,24 @@ export function cap(value) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
-/** « Adresse, Ville » (ce qui est renseigné). */
+/** « Adresse, Ville » à afficher (ce qui est renseigné, marqueurs compris). */
 export function addressText(salon) {
   return [salon.address, salon.city].map((v) => String(v || '').trim()).filter(Boolean).join(', ');
 }
 
-/** Lien d'itinéraire (Google Maps, simple lien : rien n'est chargé dans la page). */
+/**
+ * Adresse réelle, pour un itinéraire ou un fichier agenda : les champs encore à
+ * compléter sont écartés, et sans rue connue → '' (un itinéraire vers
+ * « [À COMPLÉTER] Adresse » ou vers une ville entière ne mène nulle part).
+ */
+export function placeText(salon) {
+  if (!salon || isPlaceholder(salon.address)) return '';
+  return [salon.address, salon.city].filter((v) => !isPlaceholder(v)).map((v) => cleanText(v)).join(', ');
+}
+
+/** Lien d'itinéraire (Google Maps, simple lien : rien n'est chargé dans la page) ; '' sans adresse réelle. */
 export function mapsUrl(salon) {
-  const query = addressText(salon);
+  const query = placeText(salon);
   return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : '';
 }
 
@@ -120,8 +148,16 @@ export function dayLabel(ymd, tz = DEFAULT_TZ, now = new Date()) {
   return fmtDayLong(ymd);
 }
 
-/** Titre de l'onglet : « Écran · Nom du salon » (accueil : « Nom du salon — Réserver en ligne »). */
+/**
+ * Titre de l'onglet : « Écran · Nom du salon » (accueil : « Réserver — Nom du salon »).
+ * Nom encore à compléter : « Réserver un rendez-vous », comme le manifeste.
+ */
+export function documentTitle(salon, label = '') {
+  const name = displayName(salon);
+  if (label) return `${label} · ${name || APP_TITLE}`;
+  return name ? `Réserver — ${name}` : APP_TITLE;
+}
+
 export function setDocumentTitle(salon, label = '') {
-  const name = String((salon && salon.name) || '').trim() || 'Réservation';
-  document.title = label ? `${label} · ${name}` : `${name} — Réserver en ligne`;
+  document.title = documentTitle(salon, label);
 }

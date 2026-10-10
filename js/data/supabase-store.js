@@ -44,6 +44,10 @@ export function salonFromRow(r = {}) {
     cancelLimitHours: r.cancel_limit_hours ?? 2,
     bookingEnabled: r.booking_enabled !== false,
     notice: str(r.notice),
+    // §8 bis : absent (ancienne base, ancien cache) → défaut. setup_done n'est pas
+    // renvoyé par get_public : getSalon le lit dans la table quand la barbière est connectée.
+    showCrest: r.show_crest !== false,
+    setupDone: r.setup_done === true,
   };
 }
 
@@ -52,6 +56,7 @@ const SALON_COLUMNS = {
   email: 'email', instagram: 'instagram', timezone: 'timezone', hours: 'hours',
   slotStep: 'slot_step', minNoticeMin: 'min_notice_min', maxDaysAhead: 'max_days_ahead',
   cancelLimitHours: 'cancel_limit_hours', bookingEnabled: 'booking_enabled', notice: 'notice',
+  showCrest: 'show_crest', setupDone: 'setup_done',
 };
 
 export function salonToRow(patch = {}) {
@@ -212,6 +217,7 @@ export function createSupabaseStore({
   let memorySession = null;     // repli si le stockage est indisponible
   let refreshing = null;        // rafraîchissement en cours (partagé)
   let publicCache = null;       // { at, promise } pour get_public
+  let setupCache = null;        // { at, promise } pour salon.setup_done (barbière connectée)
 
   const nowMs = () => {
     const n = now();
@@ -405,6 +411,32 @@ export function createSupabaseStore({
     return promise;
   }
 
+  /**
+   * setup_done (§8 bis) : réservé à la barbière, absent de get_public. Lu dans la
+   * table (RLS) quand une session existe, mis en cache comme get_public. Session
+   * refusée ou compte non pro (aucune ligne visible) → false ; panne → erreur.
+   */
+  function loadSetupDone() {
+    const t = nowMs();
+    if (setupCache && t - setupCache.at < PUBLIC_TTL) return setupCache.promise;
+    const promise = request('/rest/v1/salon?select=setup_done&id=eq.1')
+      .then((rows) => !!(Array.isArray(rows) && rows[0] && rows[0].setup_done === true))
+      .catch((err) => {
+        if (err && err.code === 'AUTH') return false;
+        throw err;
+      });
+    const entry = { at: t, promise };
+    setupCache = entry;
+    promise.catch(() => { if (setupCache === entry) setupCache = null; });
+    return promise;
+  }
+
+  /** Oublie les lectures mises en cache (après une écriture, à chaque rafraîchissement). */
+  function forgetCache() {
+    publicCache = null;
+    setupCache = null;
+  }
+
   function notify(source) {
     for (const cb of [...listeners]) {
       try { cb({ source }); } catch (err) { console.error(err); }
@@ -412,7 +444,7 @@ export function createSupabaseStore({
   }
 
   function changed() {
-    publicCache = null;
+    forgetCache();
     notify('local');
   }
 
@@ -431,7 +463,9 @@ export function createSupabaseStore({
     // — Public —
 
     async getSalon() {
-      return JSON.parse(JSON.stringify((await loadPublic()).salon));
+      const salon = JSON.parse(JSON.stringify((await loadPublic()).salon));
+      if (store.isLoggedIn()) salon.setupDone = await loadSetupDone();
+      return salon;
     },
 
     async listServices({ includeInactive = false } = {}) {
@@ -510,6 +544,7 @@ export function createSupabaseStore({
       if (!res.ok) throw new BookingError(isUnavailable(res.status) ? 'UNAVAILABLE' : 'AUTH');
       const session = toSession(await res.json());
       saveSession(session);
+      setupCache = null;            // setup_done relu pour ce compte
       // Contrôle facultatif : si la fonction is_pro() est exposée et répond
       // « non », ce compte n'est pas celui de la barbière.
       try {
@@ -527,6 +562,7 @@ export function createSupabaseStore({
     async logout() {
       const s = readSession();
       saveSession(null);
+      setupCache = null;
       if (s && s.access_token) {
         try { await authFetch('/auth/v1/logout', {}, s.access_token); } catch { /* déjà déconnecté */ }
       }
@@ -758,7 +794,7 @@ export function createSupabaseStore({
 
       const tick = () => {
         if (!visible()) return;
-        publicCache = null;
+        forgetCache();
         callback({ source: 'poll' });
       };
       let lastVisible = 0;
@@ -766,7 +802,7 @@ export function createSupabaseStore({
         // focus et visibilitychange arrivent souvent ensemble : un seul rafraîchissement
         if (!visible() || nowMs() - lastVisible < 2000) return;
         lastVisible = nowMs();
-        publicCache = null;
+        forgetCache();
         callback({ source: 'visible' });
       };
 

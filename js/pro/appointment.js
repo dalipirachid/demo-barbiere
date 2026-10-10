@@ -87,7 +87,7 @@ function detailHtml({ appt, client, salon }, { inSheet }) {
           <span class="pro-facts__day">${dayTitle(ymdOf(appt.start, tz))}</span></dd></div>
         <div><dt>Prestation</dt><dd>${appt.serviceName}</dd></div>
         <div><dt>Durée</dt><dd>${fmtDuration(durationMin)}</dd></div>
-        <div><dt>Prix</dt><dd>${fmtPrice(appt.priceCents)}</dd></div>
+        <div><dt>Prix</dt><dd class="pro-facts__price">${fmtPrice(appt.priceCents)}</dd></div>
         ${appt.note ? html`<div class="pro-facts__wide"><dt>Note du rendez-vous</dt><dd class="pro-prewrap">${appt.note}</dd></div>` : ''}
         <div class="pro-facts__wide"><dt>Source</dt><dd>${appt.source === 'online'
           ? `Réservé en ligne${created ? ` le ${created}` : ''}`

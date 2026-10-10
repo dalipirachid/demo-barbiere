@@ -3,15 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Agenda — [À COMPLÉTER] Nom du salon</title>
+  <title>Agenda du salon</title>
   <meta name="description" content="Espace de la barbière : agenda du jour, clients et réglages du salon.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#23413A">
-  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#070B18">
+  <meta name="color-scheme" content="dark">
   <meta name="format-detection" content="telephone=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- Barre d'état iOS transparente sur le fond nuit : le haut de page doit
+       réserver env(safe-area-inset-top) (bandeau démo, appbar, écran de connexion). -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Agenda">
 
   <link rel="manifest" href="./manifest.webmanifest">
@@ -19,8 +21,8 @@
   <link rel="icon" href="../icons/pro-favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="../icons/pro-apple-touch-icon.png">
 
+  <link rel="preload" href="../fonts/cinzel-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="../fonts/young-serif-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="../css/app.css">
   <link rel="stylesheet" href="../css/pro.css">
 

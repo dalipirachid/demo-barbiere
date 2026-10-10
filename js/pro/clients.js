@@ -199,7 +199,7 @@ export function createClientView() {
     return html`
       <div class="stats pro-client-stats">
         <div class="stat"><span class="stat__value">${c.visits}</span><span class="stat__label">${c.visits > 1 ? 'Visites' : 'Visite'}</span></div>
-        <div class="stat${c.noShows > 0 ? ' stat--accent' : ''}"><span class="stat__value">${c.noShows}</span><span class="stat__label">${c.noShows > 1 ? 'Lapins' : 'Lapin'}</span></div>
+        <div class="stat${c.noShows > 0 ? ' pro-stat--noshow' : ''}"><span class="stat__value">${c.noShows}</span><span class="stat__label">${c.noShows > 1 ? 'Lapins' : 'Lapin'}</span></div>
         <div class="stat"><span class="stat__value pro-stat-date">${c.lastVisit ? shortDate(c.lastVisit, tz) : '—'}</span><span class="stat__label">Dernière visite</span></div>
         <div class="stat"><span class="stat__value pro-stat-date">${upcoming.length ? shortDate(upcoming[0].start, tz) : '—'}</span><span class="stat__label">Prochain RDV</span>
           ${upcoming.length ? html`<span class="stat__hint">à ${fmtTime(upcoming[0].start, tz)}</span>` : ''}</div>

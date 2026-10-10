@@ -9,6 +9,7 @@
  *   showError(), proMessage()                       erreurs en français
  *   textField(), setFieldErrors()                   formulaires
  *   formSnapshot(), confirmDiscard()                saisie non enregistrée
+ *   salonName(), copyBookingLink(), shareBookingLink()  nom du salon, lien de réservation
  */
 
 import { getStore } from '../data/store.js';
@@ -17,6 +18,7 @@ import {
   DEFAULT_TZ, zonedParts, fmtTime, fmtDayLong, fmtRelativeDay, fmtDuration, parseYMD,
 } from '../core/dates.js';
 import { fmtPhone } from '../core/validate.js';
+import { displayName } from '../core/setup.js';
 import { html, icon, toast, confirmDialog } from '../ui/dom.js';
 
 /* ==========================================================================
@@ -125,6 +127,15 @@ export function writeLS(key, value) {
   try { localStorage.setItem(key, value); } catch { /* stockage indisponible */ }
 }
 
+/** Lecture de sessionStorage (null si indisponible). */
+export function readSS(key) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+
+export function writeSS(key, value) {
+  try { sessionStorage.setItem(key, value); } catch { /* stockage indisponible */ }
+}
+
 /* ==========================================================================
    Textes et formats
    ========================================================================== */
@@ -224,16 +235,59 @@ export function waHref(phone, body = '') {
   return `https://wa.me/${digits}${body ? `?text=${encodeURIComponent(body)}` : ''}`;
 }
 
+/**
+ * Nom du salon pour un titre ou un message, ou `fallback` tant que la barbière
+ * ne l'a pas choisi (jamais le marqueur « [À COMPLÉTER] », §8 bis).
+ */
+export function salonName(salon, fallback = '') {
+  return displayName(salon) || fallback;
+}
+
 /** Adresse absolue de la page de réservation des clients. */
 export function bookingUrl() {
   return new URL('../', location.href).href;
 }
 
+/**
+ * Copie le lien de réservation. Presse-papiers indisponible : le texte du champ
+ * `input` (lecture seule, facultatif) est sélectionné pour un appui long.
+ */
+export async function copyBookingLink(input = null) {
+  const url = bookingUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Lien copié : collez-le où vous voulez.', { type: 'success' });
+    return;
+  } catch { /* presse-papiers indisponible : repli ci-dessous */ }
+  let ok = false;
+  if (input) {
+    input.focus();
+    input.select();
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+  }
+  toast(ok ? 'Lien copié.' : 'Le lien est sélectionné : copiez-le avec un appui long.', { type: ok ? 'success' : 'info' });
+}
+
+/** Partage du lien de réservation (feuille de partage du téléphone). */
+export async function shareBookingLink(salon) {
+  try {
+    await navigator.share({ title: salonName(salon, 'Prendre rendez-vous'), text: 'Prenez rendez-vous en ligne :', url: bookingUrl() });
+  } catch (err) {
+    if (err && err.name !== 'AbortError') toast('Partage impossible sur cet appareil. Copiez plutôt le lien.', { type: 'error' });
+  }
+}
+
+/** Le téléphone sait-il ouvrir sa feuille de partage ? */
+export const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+// Nom du salon encore à choisir : les messages s'en passent plutôt que d'envoyer le marqueur.
+const chez = (salon) => (displayName(salon) ? ` chez ${displayName(salon)}` : '');
+
 /** SMS de rappel d'un RDV. */
 export function reminderText(appt, salon, now = new Date()) {
   const tz = tzOf(salon);
   const first = (appt.client && appt.client.firstName) || '';
-  let text = `Bonjour ${first}, petit rappel : rendez-vous ${whenPhrase(appt.start, tz, now)} à ${fmtTime(appt.start, tz)} chez ${salon.name} (${appt.serviceName}).`;
+  let text = `Bonjour ${first}, petit rappel : rendez-vous ${whenPhrase(appt.start, tz, now)} à ${fmtTime(appt.start, tz)}${chez(salon)} (${appt.serviceName}).`;
   if (salon.phone) text += ` En cas d'empêchement, merci de prévenir au ${fmtPhone(salon.phone)}.`;
   return `${text} À bientôt !`;
 }
@@ -246,14 +300,14 @@ export function excuseText(appt, salon, now = new Date()) {
   text += salon.bookingEnabled
     ? ` Vous pouvez reprendre rendez-vous en ligne (${bookingUrl()}) ou me répondre ici pour trouver un autre créneau.`
     : ' Répondez-moi ici pour trouver un autre créneau.';
-  return `${text} Encore pardon, à bientôt ! ${salon.name}`;
+  return `${text} Encore pardon, à bientôt !${displayName(salon) ? ` ${displayName(salon)}` : ''}`;
 }
 
 /** SMS pour prévenir d'un changement d'horaire. */
 export function movedText(appt, salon, now = new Date()) {
   const tz = tzOf(salon);
   const first = (appt.client && appt.client.firstName) || '';
-  let text = `Bonjour ${first}, votre rendez-vous chez ${salon.name} (${appt.serviceName}) est déplacé ${whenPhrase(appt.start, tz, now)} à ${fmtTime(appt.start, tz)}.`;
+  let text = `Bonjour ${first}, votre rendez-vous${chez(salon)} (${appt.serviceName}) est déplacé ${whenPhrase(appt.start, tz, now)} à ${fmtTime(appt.start, tz)}.`;
   if (salon.phone) text += ` Si cet horaire ne vous convient pas, prévenez-moi au ${fmtPhone(salon.phone)}.`;
   return `${text} À bientôt !`;
 }

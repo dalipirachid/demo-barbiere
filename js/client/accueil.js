@@ -1,10 +1,13 @@
-// Écran 0 — Accueil (#/) : l'enseigne, les infos pratiques, le prochain
-// créneau libre, « Mes rendez-vous » et le tableau des tarifs, dont chaque
-// ligne lance la réservation de la prestation.
+// Écran 0 — Accueil (#/) : l'enseigne (blason sur le marbre, ou nom du salon en
+// grand si la barbière a choisi de ne pas afficher le blason), les infos
+// pratiques, le prochain créneau libre, « Mes rendez-vous » et le tableau des
+// tarifs, dont chaque ligne lance la réservation de la prestation.
 
 import { html, icon, render as paint } from '../ui/dom.js';
 import { todayYMD, fmtTime, zonedParts } from '../core/dates.js';
 import { firstAvailable } from '../core/slots.js';
+import { foldText } from '../core/validate.js';
+import { displayName } from '../core/setup.js';
 import { isDemo } from '../data/store.js';
 import { loadSalon, loadServices, horizonDays, loadBusy } from './donnees.js';
 import { readMesRdv, applyBookingResults } from './memoire.js';
@@ -12,11 +15,63 @@ import { session } from './etat.js';
 import { pricelist, prefersReducedMotion } from './commun.js';
 import {
   txt, cap, tzOf, openStatus, addressText, mapsUrl, telUrl, phoneLabel, instagramUrl,
-  dayLabel, setDocumentTitle,
+  dayLabel, setDocumentTitle, showsCrest, salonTitle,
 } from './salon.js';
 
 const STATUS_TICK_MS = 60_000;
 const DAY = 86_400_000;
+
+/** Blason fourni par la cliente (seule image de marque, docs/DESIGN.md) : il porte le nom écrit sur son ruban. */
+export const BLASON = Object.freeze({ src: './img/blason.webp', alt: 'Private Barbière', width: 655, height: 742 });
+
+const fold = (value) => foldText(String(value ?? '').trim().replace(/\s+/g, ' '));
+
+/** Vrai si le nom du salon est celui que porte le blason (casse et accents ignorés) : il n'est alors pas répété en texte. */
+export function nameOnBlason(name) {
+  return fold(name) === fold(BLASON.alt);
+}
+
+/** Accroche de l'enseigne ('' si absente ou si elle redit le nom : « Barbière »). */
+export function signTagline(salon) {
+  const tagline = String((salon && salon.tagline) || '').trim();
+  return tagline && !fold(displayName(salon)).includes(fold(tagline)) ? tagline : '';
+}
+
+/**
+ * Taille du nom écrit sur l'enseigne, pour qu'il tienne sans déborder dès 320 px :
+ *   longest : nombre de lettres du mot le plus long (la police est calculée pour
+ *             qu'il tienne sur une ligne, voir .home__sign-name dans client.css) ;
+ *   max     : taille plafond en rem, plus petite pour un nom long (plusieurs lignes).
+ */
+export function signNameFit(name, { crest = false } = {}) {
+  const text = String(name ?? '').trim().replace(/\s+/g, ' ');
+  const longest = Math.max(5, ...text.split(' ').map((word) => [...word].length));
+  const length = [...text].length;
+  const max = crest
+    ? (length <= 18 ? 2.25 : 1.875)                        // sous le blason : nom en second
+    : (length <= 14 ? 3 : length <= 28 ? 2.5 : 2);         // sans blason : le nom fait l'enseigne
+  return { longest, max };
+}
+
+/**
+ * Composition de l'enseigne (§8 bis) :
+ *   crest  : blason affiché (salon.showCrest absent → oui) ;
+ *   title  : texte du <h1>, nom du salon ou marqueur « [À COMPLÉTER] » (démo) ;
+ *   todo   : le nom est encore à compléter ;
+ *   hidden : <h1> réservé aux lecteurs d'écran, le ruban du blason portant déjà ce nom ;
+ *   tagline: accroche à afficher ('' si absente ou redondante).
+ */
+export function signboardModel(salon) {
+  const crest = showsCrest(salon);
+  const name = displayName(salon);
+  return {
+    crest,
+    title: salonTitle(salon),
+    todo: !name,
+    hidden: crest && Boolean(name) && nameOnBlason(name),
+    tagline: signTagline(salon),
+  };
+}
 
 /** L'accueil se met à jour dès que les données changent (réglages, autre onglet…). */
 export function shouldRefresh() {
@@ -74,11 +129,49 @@ export function nextSlotDuration(services) {
 
 // — Vues ——————————————————————————————————————————————————————————
 
+/** Variables de taille du nom (signNameFit), posées sur le <h1> de l'enseigne. */
+function fitStyle(title, crest) {
+  const { longest, max } = signNameFit(title, { crest });
+  return `--mot: ${longest}; --nom-max: ${max}rem`;
+}
+
+/**
+ * L'enseigne de l'accueil (.signboard : marbre voilé, double filet d'or).
+ * Blason affiché : le blason en premier, puis le nom du salon, titre de l'écran.
+ * Quand le blason porte déjà ce nom (ruban « PRIVATE BARBIÈRE »), le titre reste
+ * lu par les lecteurs d'écran mais n'est pas répété à l'œil ; sinon il s'affiche
+ * en Cinzel sous le blason. Dimensions de l'image posées : rien ne bouge en arrivant.
+ * Blason masqué (choix de la barbière) : le nom en grand, en Cinzel or, filet orné
+ * et accroche dessous, dans une enseigne de même hauteur.
+ */
+function signboard(salon, reveal) {
+  const sign = signboardModel(salon);
+  const titleClass = sign.todo ? ' home__sign-name--todo' : '';
+  if (!sign.crest) {
+    return html`
+      <header class="signboard home__sign home__sign--nom reveal" style="${reveal()}">
+        <h1 class="signboard__name home__sign-name${titleClass}" style="${fitStyle(sign.title, false)}" tabindex="-1" data-screen-title>${txt(sign.title)}</h1>
+        <div class="filet-orne home__sign-filet" aria-hidden="true"></div>
+        ${sign.tagline ? html`<p class="signboard__kicker home__sign-tagline">${txt(sign.tagline)}</p>` : ''}
+      </header>`;
+  }
+  return html`
+    <header class="signboard home__sign${sign.hidden && !sign.tagline ? ' home__sign--solo' : ''} reveal" style="${reveal()}">
+      <span class="blason home__blason"><img src="${BLASON.src}" alt="${BLASON.alt}" width="${BLASON.width}" height="${BLASON.height}" fetchpriority="high"></span>
+      ${sign.tagline ? html`<p class="signboard__kicker">${txt(sign.tagline)}</p>` : ''}
+      ${sign.hidden
+        ? html`<h1 class="sr-only" tabindex="-1" data-screen-title>${sign.title}</h1>`
+        : html`<h1 class="signboard__name home__sign-name${titleClass}" style="${fitStyle(sign.title, true)}" tabindex="-1" data-screen-title>${txt(sign.title)}</h1>`}
+    </header>`;
+}
+
 function skeleton() {
   return html`
     <div class="page stack home" aria-busy="true">
       <p class="sr-only" role="status">Chargement…</p>
-      <span class="skeleton skeleton--block home__skeleton-sign" aria-hidden="true"></span>
+      <div class="signboard home__sign home__sign--solo" aria-hidden="true">
+        <span class="home__blason home__blason--wait"></span>
+      </div>
       <div class="card stack stack--sm" aria-hidden="true">
         <span class="skeleton skeleton--text" style="width: 55%"></span>
         <span class="skeleton skeleton--text" style="width: 80%"></span>
@@ -107,26 +200,26 @@ function view(salon, services, quiet) {
 
   return html`
     <div class="page stack home${quiet ? ' is-quiet' : ''}">
+      ${signboard(salon, reveal)}
       ${notice ? html`
         <div class="notice home__notice reveal" style="${reveal()}" role="note">
           ${icon('info')}<p class="home__notice-text">${notice}</p>
         </div>` : ''}
 
-      <header class="signboard reveal" style="${reveal()}">
-        <p class="signboard__kicker">${txt(salon.tagline || 'Barbière')}</p>
-        <h1 class="signboard__name" tabindex="-1" data-screen-title>${txt(salon.name)}</h1>
-        ${salon.city ? html`<p class="signboard__meta">${txt(salon.city)}</p>` : ''}
-      </header>
-
       <section class="card home__info reveal" style="${reveal()}" aria-label="Infos pratiques">
         <p class="home__status ${status.open ? 'is-open' : 'is-closed'}" data-status>
           <span class="home__status-dot" aria-hidden="true"></span><span data-status-text>${status.text}</span>
         </p>
-        ${address ? html`
+        ${address && maps ? html`
           <a class="home__address" href="${maps}" target="_blank" rel="noopener">
             ${icon('epingle')}
             <span class="home__address-text">${txt(address)}<span class="home__address-hint">Itinéraire</span></span>
           </a>` : ''}
+        ${address && !maps ? html`
+          <p class="home__address">
+            ${icon('epingle')}
+            <span class="home__address-text">${txt(address)}</span>
+          </p>` : ''}
         ${tel || insta ? html`
           <div class="home__contact">
             ${tel ? html`<a class="btn btn--sm" href="${tel}">${icon('telephone')}<span>Appeler</span></a>` : ''}
@@ -155,12 +248,13 @@ function view(salon, services, quiet) {
       <section class="home__mine reveal" style="${reveal()}" data-mine aria-labelledby="mine-title"${mine ? '' : html` hidden`}>${mine}</section>
 
       <section class="home__tarifs reveal" style="${reveal()}" id="tarifs" aria-labelledby="tarifs-title">
-        <h2 class="section-title" id="tarifs-title">Prestations et tarifs</h2>
+        <div class="filet-orne home__tarifs-filet" aria-hidden="true"></div>
+        <h2 class="home__tarifs-title" id="tarifs-title">Prestations et tarifs</h2>
         ${salon.bookingEnabled && services.length
           ? html`<p class="muted small home__tarifs-hint">Touchez une prestation pour choisir votre créneau.</p>` : ''}
         ${services.length
           ? pricelist(services, { interactive: Boolean(salon.bookingEnabled) })
-          : html`<p class="muted">Les prestations seront bientôt affichées ici.</p>`}
+          : html`<p class="muted home__tarifs-hint">Les prestations seront bientôt affichées ici.</p>`}
         ${isDemo() ? html`<p class="muted small home__demo-note">Démonstration : prestations et tarifs donnés à titre d’exemple.</p>` : ''}
       </section>
     </div>`;

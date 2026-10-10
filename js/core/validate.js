@@ -288,6 +288,9 @@ export function validateSalonPatch(patch = {}) {
   int('maxDaysAhead', 1, 365, 'Horizon de réservation entre 1 et 365 jours.');
   int('cancelLimitHours', 0, 168, "Délai d'annulation entre 0 et 168 heures.");
   if (p.bookingEnabled !== undefined) value.bookingEnabled = Boolean(p.bookingEnabled);
+  // Personnalisation (§8 bis) : blason affiché ou non, assistant de configuration terminé.
+  if (p.showCrest !== undefined) value.showCrest = Boolean(p.showCrest);
+  if (p.setupDone !== undefined) value.setupDone = Boolean(p.setupDone);
 
   return { ok: Object.keys(errors).length === 0, errors, value };
 }

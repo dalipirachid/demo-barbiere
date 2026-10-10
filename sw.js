@@ -2,7 +2,7 @@
  *
  * Une « coquille » d'appli par version :
  * - À l'installation, TOUS les fichiers de l'appli (pages, modules JS, styles,
- *   manifestes, icônes, polices) sont téléchargés dans un cache propre à
+ *   manifestes, icônes, images, polices) sont téléchargés dans un cache propre à
  *   VERSION, en une seule fois (Cache.addAll : tout ou rien). S'il en manque
  *   un seul, l'installation échoue et la version en place reste intacte.
  * - Ensuite, pages, modules et styles sont servis depuis CE cache, jamais depuis
@@ -23,7 +23,7 @@
  * (tests/sw.test.mjs le vérifie). Procédure complète : docs/DEPLOIEMENT.md.
  */
 
-const VERSION = '2026-10-08.1';
+const VERSION = '2026-10-11.1';
 
 const SCOPE_URL = new URL('./', self.location);                // …/app/ (ou la racine du dépôt publié)
 const CACHE_PREFIX = `barbiere:${SCOPE_URL.pathname}:`;        // un préfixe par déploiement
@@ -48,6 +48,7 @@ const PRECACHE_PATHS = [
   // Modules communs
   'js/core/dates.js',
   'js/core/errors.js',
+  'js/core/setup.js',
   'js/core/slots.js',
   'js/core/validate.js',
   'js/data/local-store.js',
@@ -74,6 +75,7 @@ const PRECACHE_PATHS = [
   // Modules côté barbière
   'js/pro/agenda.js',
   'js/pro/appointment.js',
+  'js/pro/assistant.js',
   'js/pro/block-form.js',
   'js/pro/calc.js',
   'js/pro/clients.js',
@@ -96,9 +98,13 @@ const PRECACHE_PATHS = [
   'icons/pro-icon-192.png',
   'icons/pro-icon-512.png',
   'icons/pro-icon-maskable-512.png',
+  // Images de marque (blason de la cliente, marbre)
+  'img/blason.webp',
+  'img/marbre.webp',
+  'img/marbre-fond.webp',
   // Polices
-  'fonts/young-serif-latin.woff2',
-  'fonts/young-serif-latin-ext.woff2',
+  'fonts/cinzel-latin.woff2',
+  'fonts/cinzel-latin-ext.woff2',
   'fonts/hanken-grotesk-latin.woff2',
   'fonts/hanken-grotesk-latin-ext.woff2',
 ];
@@ -210,9 +216,13 @@ function offlineResponse(request) {
   }
   const page = `<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Hors connexion</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#F4EEE4;color:#1C2925;
-font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}h1{font:400 1.6rem Georgia,serif;margin:0 0 8px}
-button{margin-top:16px;min-height:48px;padding:0 24px;border:0;border-radius:999px;background:#23413A;color:#FFFCF7;font:inherit;font-weight:600}</style>
+<meta name="theme-color" content="#070B18"><meta name="color-scheme" content="dark">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070B18;color:#F2EAD8;
+font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}
+h1{font:600 1.35rem Georgia,serif;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
+p{color:#C6CDE1;margin:0}
+button{margin-top:20px;min-height:48px;padding:0 28px;border:0;border-radius:999px;background:#D6B15E;color:#070B18;font:inherit;font-weight:600}
+button:focus-visible{outline:2px solid #EBCF8C;outline-offset:3px}</style>
 </head><body><main><h1>Pas de connexion</h1><p>Vérifiez le réseau, puis réessayez.</p>
 <button type="button" onclick="location.reload()">Réessayer</button></main></body></html>`;
   return new Response(page, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
